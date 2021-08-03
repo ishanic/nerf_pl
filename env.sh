@@ -1,0 +1,1 @@
+cd torchsearchsorted && pip install . --user && cd ..

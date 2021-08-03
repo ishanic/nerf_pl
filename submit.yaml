@@ -1,0 +1,57 @@
+description: video-mesh-training
+
+target:
+  service: amlk8s
+  # name: itpeastusv100cl2
+  # name: itpeastusv100cl
+  name: itpeusp100cl
+  vc: resrchvc
+
+  # service: aml
+  # name: itpeusp100cl
+  # vc: resrchvc
+
+environment:
+  # https://phillytools.azurewebsites.net/master/advanced/5_customizing_dockers.html
+  image: pytorch/pytorch:1.4-cuda10.1-cudnn7-devel
+  registry: docker.io # any public registry can be specified here
+  setup:
+    - pip install tensorboard --user
+    - pip install torchvision==0.5.0 --user
+    - pip install pytorch-lightning==0.7.5 --user
+    - pip install test-tube --user
+    - pip install kornia==0.2.0 --user
+    - pip install opencv-python==4.2.0.34 --user
+    - pip install matplotlib --user
+    - pip install PyMCubes --user
+    - pip install pycollada --user
+    - pip install trimesh --user
+    - pip install pyglet --user
+    - pip install plyfile --user
+    - pip install open3d --user
+
+code:
+  # local directory of the code. this will be uploaded to the server.
+  # $CONFIG_DIR is expanded to the directory of this config file
+  local_dir: $CONFIG_DIR
+
+# data:
+#   data upload is not required for this example
+
+storage:
+  external:
+    storage_account_name: ischakraeastus
+    container_name: instances
+    # container_name: objectron
+
+jobs:
+- name: silica-G4
+  sku: G4
+  command:
+  - bash env.sh  
+  - python train.py --load_json configs/config_silica.json --num_gpus 4
+# - name: objectron-cup-G4
+#   sku: G4
+#   command:
+#   - bash env.sh  
+#   - python train.py --load_json configs/config_objectron.json --num_gpus 4

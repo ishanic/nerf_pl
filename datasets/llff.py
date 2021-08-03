@@ -8,6 +8,8 @@ from torchvision import transforms as T
 
 from .ray_utils import *
 
+# use tips mentioned here for arbitrary datasets:
+# https://github.com/kwea123/nerf_pl/issues/50
 
 def normalize(v):
     """Normalize a vector."""
@@ -184,7 +186,6 @@ class LLFFDataset(Dataset):
 
         poses = poses_bounds[:, :15].reshape(-1, 3, 5) # (N_images, 3, 5)
         self.bounds = poses_bounds[:, -2:] # (N_images, 2)
-
         # Step 1: rescale focal length according to training resolution
         H, W, self.focal = poses[0, :, -1] # original intrinsics, same for all images
         assert H*self.img_wh[0] == W*self.img_wh[1], \
@@ -197,7 +198,10 @@ class LLFFDataset(Dataset):
         # See https://github.com/bmild/nerf/issues/34
         poses = np.concatenate([poses[..., 1:2], -poses[..., :1], poses[..., 2:4]], -1)
                 # (N_images, 3, 4) exclude H, W, focal
+        
         self.poses, self.pose_avg = center_poses(poses)
+        # for i,pose in enumerate(self.poses):
+        #     np.save('/home/ischakra/data/silica/normalized_poses/%05d'%i,pose)
         distances_from_center = np.linalg.norm(self.poses[..., 3], axis=1)
         val_idx = np.argmin(distances_from_center) # choose val image as the closest to
                                                    # center image
@@ -205,11 +209,14 @@ class LLFFDataset(Dataset):
         # Step 3: correct scale so that the nearest depth is at a little more than 1.0
         # See https://github.com/bmild/nerf/issues/34
         near_original = self.bounds.min()
-        scale_factor = near_original*0.75 # 0.75 is the default parameter
+        # scale_factor = near_original*0.75 # 0.75 is the default parameter
                                           # the nearest depth is at 1/0.75=1.33
+        scale_factor = near_original*4
+        # scale_factor = np.sqrt(np.mean(np.sum(np.square(distances_from_center))))
         self.bounds /= scale_factor
         self.poses[..., 3] /= scale_factor
-
+        print(self.poses[...,3].min(), self.poses[...,3].max())
+        
         # ray directions for all pixels, same for all images (same H, W, focal)
         self.directions = \
             get_ray_directions(self.img_wh[1], self.img_wh[0], self.focal) # (H, W, 3)
@@ -242,7 +249,8 @@ class LLFFDataset(Dataset):
                                      # See https://github.com/bmild/nerf/issues/34
                 else:
                     near = self.bounds.min()
-                    far = min(8 * near, self.bounds.max()) # focus on central object only
+                    # far = min(8 * near, self.bounds.max()) # focus on central object only
+                    far = self.bounds.max()
 
                 self.all_rays += [torch.cat([rays_o, rays_d, 
                                              near*torch.ones_like(rays_o[:, :1]),
@@ -298,7 +306,8 @@ class LLFFDataset(Dataset):
                                               self.focal, 1.0, rays_o, rays_d)
             else:
                 near = self.bounds.min()
-                far = min(8 * near, self.bounds.max())
+                # far = min(8 * near, self.bounds.max())
+                far = self.bounds.max()
 
             rays = torch.cat([rays_o, rays_d, 
                               near*torch.ones_like(rays_o[:, :1]),
@@ -316,3 +325,10 @@ class LLFFDataset(Dataset):
                 sample['rgbs'] = img
 
         return sample
+
+if __name__ == '__main__':
+    img_wh = (1440, 1920)
+    # img_wh = (4032, 3024)
+    dataset = LLFFDataset('/home/ischakra/data/objectron-cup/example_0/', 'val',spheric_poses=True, img_wh=img_wh)
+    # dataset = LLFFDataset('/home/ischakra/data/silica/', 'val',spheric_poses=True, img_wh=img_wh)
+    dataset.read_meta()

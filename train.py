@@ -24,6 +24,8 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.logging import TestTubeLogger
 
+import json
+
 class NeRFSystem(LightningModule):
     def __init__(self, hparams):
         super(NeRFSystem, self).__init__()
@@ -124,15 +126,14 @@ class NeRFSystem(LightningModule):
         log = {'val_loss': self.loss(results, rgbs)}
         typ = 'fine' if 'rgb_fine' in results else 'coarse'
     
-        if batch_nb == 0:
-            W, H = self.hparams.img_wh
-            img = results[f'rgb_{typ}'].view(H, W, 3).cpu()
-            img = img.permute(2, 0, 1) # (3, H, W)
-            img_gt = rgbs.view(H, W, 3).permute(2, 0, 1).cpu() # (3, H, W)
-            depth = visualize_depth(results[f'depth_{typ}'].view(H, W)) # (3, H, W)
-            stack = torch.stack([img_gt, img, depth]) # (3, 3, H, W)
-            self.logger.experiment.add_images('val/GT_pred_depth',
-                                               stack, self.global_step)
+        # if batch_nb == 0:
+        #     W, H = self.hparams.img_wh
+        #     img = results[f'rgb_{typ}'].view(H, W, 3).cpu()
+        #     img = img.permute(2, 0, 1) # (3, H, W)
+        #     img_gt = rgbs.view(H, W, 3).permute(2, 0, 1).cpu() # (3, H, W)
+        #     depth = visualize_depth(results[f'depth_{typ}'].view(H, W)) # (3, H, W)
+        #     stack = torch.stack([img_gt, img, depth]) # (3, 3, H, W)
+        #     self.logger.experiment.add_images('val/GT_pred_depth', stack, self.global_step)
 
         log['val_psnr'] = psnr(results[f'rgb_{typ}'], rgbs)
         return log
@@ -151,7 +152,9 @@ class NeRFSystem(LightningModule):
 if __name__ == '__main__':
     hparams = get_opts()
     system = NeRFSystem(hparams)
-    checkpoint_callback = ModelCheckpoint(filepath=os.path.join(f'ckpts/{hparams.exp_name}',
+    # checkpoint_callback = ModelCheckpoint(filepath=os.path.join(f'ckpts/{hparams.exp_name}',
+                                                                # '{epoch:d}'),
+    checkpoint_callback = ModelCheckpoint(filepath=os.path.join('{hparams.ckpt_path}/{hparams.exp_name}',
                                                                 '{epoch:d}'),
                                           monitor='val/loss',
                                           mode='min',

@@ -1,7 +1,12 @@
 import argparse
+import json
 
 def get_opts():
     parser = argparse.ArgumentParser()
+
+    parser.add_argument('--load_json', type=str,
+                        default='',
+                        help='Load settings from file in json format. Command line options override values in file.')
 
     parser.add_argument('--root_dir', type=str,
                         default='/home/ubuntu/data/nerf_example_data/nerf_synthetic/lego',
@@ -11,7 +16,7 @@ def get_opts():
                         help='which dataset to train/val')
     parser.add_argument('--img_wh', nargs="+", type=int, default=[800, 800],
                         help='resolution (img_w, img_h) of the image')
-    parser.add_argument('--spheric_poses', default=False, action="store_true",
+    parser.add_argument('--spheric_poses', default=True, action="store_true",
                         help='whether images are taken in spheric poses (for llff)')
 
     parser.add_argument('--N_samples', type=int, default=64,
@@ -75,4 +80,12 @@ def get_opts():
     parser.add_argument('--exp_name', type=str, default='exp',
                         help='experiment name')
 
-    return parser.parse_args()
+    args = parser.parse_args()
+    
+    if len(args.load_json) > 0:
+        with open(args.load_json, 'rt') as f:
+            t_args = argparse.Namespace()
+            t_args.__dict__.update(json.load(f))
+            args = parser.parse_args(namespace=t_args)
+    
+    return args
