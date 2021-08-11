@@ -209,8 +209,8 @@ class LLFFDataset(Dataset):
         distances_from_center = np.linalg.norm(self.poses[..., 3], axis=1)
 
         # hacks for debugging
-        self.image_paths = self.image_paths[0:10]
-        val_idx = 1
+        # self.image_paths = self.image_paths[0:10]
+        # val_idx = 1
         # val_idx = np.argmin(distances_from_center) # choose val image as the closest to
         #                                            # center image
 
