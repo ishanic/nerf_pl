@@ -1,0 +1,14 @@
+{
+    "exp": "nerf-real-360",
+    "dataset_name": "llff",
+    "root_dir": "/mnt/external/plant",
+    "save_ckpt_path": "/mnt/external/plant",
+    "N_importance": 128,
+    "img_wh": [4512, 3008],
+    "num_epochs": 20,
+    "batch_size": 4096,
+    "optimizer": "adam",
+    "lr": 5e-4,
+    "lr_scheduler": "cosine",
+    "exp_name": "plant-bsx4"
+}

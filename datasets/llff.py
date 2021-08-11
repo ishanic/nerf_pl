@@ -203,15 +203,20 @@ class LLFFDataset(Dataset):
         # for i,pose in enumerate(self.poses):
         #     np.save('/home/ischakra/data/silica/normalized_poses/%05d'%i,pose)
         distances_from_center = np.linalg.norm(self.poses[..., 3], axis=1)
+
+        # hacks for debugging
+        self.image_paths = self.image_paths[0:10]
+        val_idx = 1
         val_idx = np.argmin(distances_from_center) # choose val image as the closest to
                                                    # center image
 
         # Step 3: correct scale so that the nearest depth is at a little more than 1.0
         # See https://github.com/bmild/nerf/issues/34
-        near_original = self.bounds.min()
-        # scale_factor = near_original*0.75 # 0.75 is the default parameter
+        # near_original = self.bounds.min()
+        near_original = self.poses[...,3].min()
+        scale_factor = near_original*0.75 # 0.75 is the default parameter
                                           # the nearest depth is at 1/0.75=1.33
-        scale_factor = near_original*4
+        # scale_factor = near_original*4
         # scale_factor = np.sqrt(np.mean(np.sum(np.square(distances_from_center))))
         self.bounds /= scale_factor
         self.poses[..., 3] /= scale_factor
@@ -327,8 +332,10 @@ class LLFFDataset(Dataset):
         return sample
 
 if __name__ == '__main__':
-    img_wh = (1440, 1920)
+    # img_wh = (1440, 1920)
     # img_wh = (4032, 3024)
-    dataset = LLFFDataset('/home/ischakra/data/objectron-cup/example_0/', 'val',spheric_poses=True, img_wh=img_wh)
+    img_wh = (4512, 3008)
+    # dataset = LLFFDataset('/home/ischakra/data/objectron-cup/example_0/', 'val',spheric_poses=True, img_wh=img_wh)
     # dataset = LLFFDataset('/home/ischakra/data/silica/', 'val',spheric_poses=True, img_wh=img_wh)
+    dataset = LLFFDataset('/data/synthetic/nerf_real_360/veena_player/', 'train',spheric_poses=True, img_wh=img_wh)
     dataset.read_meta()
