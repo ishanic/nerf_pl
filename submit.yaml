@@ -1,15 +1,16 @@
 description: video-mesh-training
 
 target:
-  service: amlk8s
+  # service: amlk8s
   # name: itpeastusv100cl2
   # name: itpeastusv100cl
-  name: itpeusp100cl
-  vc: resrchvc
-
-  # service: aml
   # name: itpeusp100cl
+  # v100x8-redmond
+  # name: itplabrr1cl1
   # vc: resrchvc
+
+  service: aml
+  name: v100x8
 
 environment:
   # https://phillytools.azurewebsites.net/master/advanced/5_customizing_dockers.html
@@ -41,17 +42,29 @@ code:
 storage:
   external:
     storage_account_name: ischakraeastus
+    # storage_account_name: ischakraredmond
     container_name: instances
     # container_name: objectron
 
 jobs:
-- name: silica-G4
-  sku: G4
-  command:
-  - bash env.sh  
-  - python train.py --load_json configs/config_silica.json --num_gpus 4
-# - name: objectron-cup-G4
-#   sku: G4
+# - name: silica-G8-aml
+#   sku: G8
 #   command:
 #   - bash env.sh  
-#   - python train.py --load_json configs/config_objectron.json --num_gpus 4
+#   - python train.py --load_json configs/config_silica.json --num_gpus 8
+# - name: vasedeck-G8-aml-bsx4
+#   sku: G8
+#   command:
+#   - bash env.sh  
+#   - python train.py --load_json configs/config_real.json --num_gpus 8
+#   submit_args:
+#     container_args:
+#         shm_size: 64g
+- name: plant-G8-aml-bsx4
+  sku: G8
+  command:
+  - bash env.sh  
+  - python train.py --load_json configs/config_real_nikon.json --num_gpus 8
+  submit_args:
+    container_args:
+        shm_size: 64g

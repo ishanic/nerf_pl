@@ -7,7 +7,11 @@ def get_ray_directions(H, W, focal):
     Get ray directions for all pixels in camera coordinate.
     Reference: https://www.scratchapixel.com/lessons/3d-basic-rendering/
                ray-tracing-generating-camera-rays/standard-coordinate-systems
-
+    inv(K)*x = RTX
+    Applies the intrinsic matrix plus some other coordinate system related stuff: 
+    since the y value indexes from top to bottom, we flip it, 
+    and since the camera looks along the negative z axis, we negative it. 
+    In practice we didn't find the calibration precise enough for the +0.5 to matter.
     Inputs:
         H, W, focal: image height, width and focal length
 
@@ -18,6 +22,8 @@ def get_ray_directions(H, W, focal):
     i, j = grid.unbind(-1)
     # the direction here is without +0.5 pixel centering as calibration is not so accurate
     # see https://github.com/bmild/nerf/issues/24
+    # (-W/2 to W/2)/focal.
+    # the direction of the center pixel will be [0,0,-1]
     directions = \
         torch.stack([(i-W/2)/focal, -(j-H/2)/focal, -torch.ones_like(i)], -1) # (H, W, 3)
 
@@ -35,10 +41,11 @@ def get_rays(directions, c2w):
         c2w: (3, 4) transformation matrix from camera coordinate to world coordinate
 
     Outputs:
-        rays_o: (H*W, 3), the origin of the rays in world coordinate
+        rays_o: (H*W, 3), the origin of the rays (camera position) in world coordinate
         rays_d: (H*W, 3), the normalized direction of the rays in world coordinate
     """
     # Rotate ray directions from camera coordinate to the world coordinate
+    
     rays_d = directions @ c2w[:, :3].T # (H, W, 3)
     rays_d = rays_d / torch.norm(rays_d, dim=-1, keepdim=True)
     # The origin of all rays is the camera origin in world coordinate

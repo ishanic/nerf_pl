@@ -7,6 +7,7 @@ from PIL import Image
 from torchvision import transforms as T
 
 from .ray_utils import *
+# from ray_utils import *
 
 # use tips mentioned here for arbitrary datasets:
 # https://github.com/kwea123/nerf_pl/issues/50
@@ -180,9 +181,12 @@ class LLFFDataset(Dataset):
                                             'poses_bounds.npy')) # (N_images, 17)
         self.image_paths = sorted(glob.glob(os.path.join(self.root_dir, 'images/*')))
                         # load full resolution image then resize
+        
         if self.split in ['train', 'val']:
             assert len(poses_bounds) == len(self.image_paths), \
                 'Mismatch between number of images and number of poses! Please rerun COLMAP!'
+
+        
 
         poses = poses_bounds[:, :15].reshape(-1, 3, 5) # (N_images, 3, 5)
         self.bounds = poses_bounds[:, -2:] # (N_images, 2)
@@ -203,21 +207,31 @@ class LLFFDataset(Dataset):
         # for i,pose in enumerate(self.poses):
         #     np.save('/home/ischakra/data/silica/normalized_poses/%05d'%i,pose)
         distances_from_center = np.linalg.norm(self.poses[..., 3], axis=1)
-        val_idx = np.argmin(distances_from_center) # choose val image as the closest to
-                                                   # center image
+
+        # hacks for debugging
+        self.image_paths = self.image_paths[0:10]
+        val_idx = 1
+        # val_idx = np.argmin(distances_from_center) # choose val image as the closest to
+        #                                            # center image
 
         # Step 3: correct scale so that the nearest depth is at a little more than 1.0
         # See https://github.com/bmild/nerf/issues/34
-        near_original = self.bounds.min()
-        # scale_factor = near_original*0.75 # 0.75 is the default parameter
-                                          # the nearest depth is at 1/0.75=1.33
-        scale_factor = near_original*4
+        # import pdb; pdb.set_trace()
+
+        # near_original = self.bounds.min()
+        near_original = self.poses[...,3].min()
+        scale_factor = near_original*0.75 # 0.75 is the default parameter
+                                          # the nearest depth self.bounds.min() is at 1/0.75=1.33
+        # scale_factor = near_original*1.5
+        # scale_factor = near_original*(1/1.25)
         # scale_factor = np.sqrt(np.mean(np.sum(np.square(distances_from_center))))
         self.bounds /= scale_factor
         self.poses[..., 3] /= scale_factor
-        print(self.poses[...,3].min(), self.poses[...,3].max())
+        print(self.bounds.min(), self.poses[...,3].min(), self.poses[...,3].max())
         
         # ray directions for all pixels, same for all images (same H, W, focal)
+        # Pixel coordinates to camera coordinates. 
+        # The ray from center pixel to camera has direction = [0,0,-1]
         self.directions = \
             get_ray_directions(self.img_wh[1], self.img_wh[0], self.focal) # (H, W, 3)
             
@@ -238,8 +252,10 @@ class LLFFDataset(Dataset):
                 img = self.transform(img) # (3, h, w)
                 img = img.view(3, -1).permute(1, 0) # (h*w, 3) RGB
                 self.all_rgbs += [img]
-                
+                # rays_o is the camera pose (origin of rays in world coordinates) repeated pixel times
+                # rays_d are the camera to image ray directions in world coordinates
                 rays_o, rays_d = get_rays(self.directions, c2w) # both (h*w, 3)
+                
                 if not self.spheric_poses:
                     near, far = 0, 1
                     rays_o, rays_d = get_ndc_rays(self.img_wh[1], self.img_wh[0],
@@ -327,8 +343,10 @@ class LLFFDataset(Dataset):
         return sample
 
 if __name__ == '__main__':
-    img_wh = (1440, 1920)
+    # img_wh = (1440, 1920)
     # img_wh = (4032, 3024)
-    dataset = LLFFDataset('/home/ischakra/data/objectron-cup/example_0/', 'val',spheric_poses=True, img_wh=img_wh)
-    # dataset = LLFFDataset('/home/ischakra/data/silica/', 'val',spheric_poses=True, img_wh=img_wh)
+    img_wh = (4512, 3008)
+    # dataset = LLFFDataset('/home/ischakra/data/objectron-cup/example_0/', 'val',spheric_poses=True, img_wh=img_wh)
+    # train loads all images, and all rays in a single tensor. 
+    dataset = LLFFDataset('/data/synthetic/nerf_real_360/veena_player/', 'train',spheric_poses=True, img_wh=img_wh)
     dataset.read_meta()

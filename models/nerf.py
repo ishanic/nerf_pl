@@ -97,6 +97,7 @@ class NeRF(nn.Module):
             else:
                 out: (B, 4), rgb and sigma
         """
+
         if not sigma_only:
             input_xyz, input_dir = \
                 torch.split(x, [self.in_channels_xyz, self.in_channels_dir], dim=-1)
@@ -106,6 +107,7 @@ class NeRF(nn.Module):
         xyz_ = input_xyz
         for i in range(self.D):
             if i in self.skips:
+                import pdb; pdb.set_trace()
                 xyz_ = torch.cat([input_xyz, xyz_], -1)
             xyz_ = getattr(self, f"xyz_encoding_{i+1}")(xyz_)
 

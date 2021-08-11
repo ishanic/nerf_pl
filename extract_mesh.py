@@ -11,15 +11,19 @@ from datasets import dataset_dict
 
 from utils import load_ckpt
 
-img_wh = (1440, 1920) # full resolution of the input images
-# img_wh = (4032, 3024) # full resolution of the input images
 dataset_name = 'llff' # blender or llff (own data)
-scene_name = 'test' # whatever you want
-root_dir = "/home/ischakra/data/objectron-cup/example_0/" # the folder containing data (images/ and poses_bounds.npy)
-ckpt_path = "/home/ischakra/src/code/nerf_pl/ckpts/objectron-cup/epoch=2_v0.ckpt" # the model path
 
+# img_wh = (1440, 1920) # full resolution of the input images
+img_wh = (4032, 3024)
+root_dir = "/data/synthetic/nerf_real_360/vasedeck/" # the folder containing data (images/ and poses_bounds.npy)
+ckpt_path = "/home/ischakra/src/code/nerf_pl/ckpts/vasedeck/epoch=3.ckpt" # the model path
+# scene_name = 'objectron-cup-v100x8_bsx4_epoch=5' # whatever you want
+scene_name = 'vasedeck' # whatever you want
+
+# img_wh = (4032, 3024) # full resolution of the input images
 # root_dir = "/home/ischakra/data/silica" # the folder containing data (images/ and poses_bounds.npy)
-# ckpt_path = "/home/ischakra/src/code/nerf_pl/ckpts/exp/silica.ckpt" # the model path
+# ckpt_path = "/home/ischakra/src/code/nerf_pl/ckpts/silica-v100x4/epoch=2.ckpt" # the model path
+# scene_name = 'silica-v100x4_epoch=2'
 
 ###############
 
@@ -46,9 +50,12 @@ nerf_fine.cuda().eval();
 N = 128 # controls the resolution, set this number small here because we're only finding
         # good ranges here, not yet for mesh reconstruction; we can set this number high
         # when it comes to final reconstruction.
-xmin, xmax = -1, 1 # left/right range
-ymin, ymax = -1, 1 # forward/backward range
-zmin, zmax = -2.64, -0.64 # up/down range
+xy_range = 1 #1        
+# z_min = -2.64; z_max = -0.64
+z_min = -1; z_max = 1
+xmin, xmax = -1*xy_range, xy_range # left/right range
+ymin, ymax = -1*xy_range, xy_range # forward/backward range
+zmin, zmax = z_min, z_max # up/down range
 ## Attention! the ranges MUST have the same length!
 sigma_threshold = 20. # controls the noise (lower=maybe more noise; higher=some mesh might be missing)
 ############################################################################################

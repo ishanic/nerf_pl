@@ -19,12 +19,14 @@ def get_opts():
     parser.add_argument('--spheric_poses', default=True, action="store_true",
                         help='whether images are taken in spheric poses (for llff)')
 
-    parser.add_argument('--N_samples', type=int, default=64,
+    parser.add_argument('--N_samples', type=int, default=128,
                         help='number of coarse samples')
     parser.add_argument('--N_importance', type=int, default=128,
                         help='number of additional fine samples')
     parser.add_argument('--use_disp', default=False, action="store_true",
-                        help='use disparity depth sampling')
+                        help='use disparity depth sampling. \
+                        From notes: --use_disp is not useful if the scene is small (near and far bounds are close). \
+                        I think its only useful if the scene contains a big portion of far background.')
     parser.add_argument('--perturb', type=float, default=1.0,
                         help='factor to perturb depth sampling points')
     parser.add_argument('--noise_std', type=float, default=1.0,
@@ -81,7 +83,7 @@ def get_opts():
                         help='experiment name')
 
     args = parser.parse_args()
-    
+
     if len(args.load_json) > 0:
         with open(args.load_json, 'rt') as f:
             t_args = argparse.Namespace()

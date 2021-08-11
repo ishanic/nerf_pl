@@ -44,6 +44,10 @@ class NeRFSystem(LightningModule):
             self.models += [self.nerf_fine]
 
     def decode_batch(self, batch):
+        # the batch size determines the number of iterations in the epoch
+        # N_images X H x W = total sample set
+        # batch_size = 4096
+        # # of iterations ~ N_images X H x W /4096?  
         rays = batch['rays'] # (B, 8)
         rgbs = batch['rgbs'] # (B, 3)
         return rays, rgbs
@@ -106,6 +110,8 @@ class NeRFSystem(LightningModule):
         log = {'lr': get_learning_rate(self.optimizer)}
         rays, rgbs = self.decode_batch(batch)
         results = self(rays)
+        # rgb, depth, opacity -> coarse and fine
+        # import pdb; pdb.set_trace()
         log['train/loss'] = loss = self.loss(results, rgbs)
         typ = 'fine' if 'rgb_fine' in results else 'coarse'
 
@@ -154,7 +160,7 @@ if __name__ == '__main__':
     system = NeRFSystem(hparams)
     # checkpoint_callback = ModelCheckpoint(filepath=os.path.join(f'ckpts/{hparams.exp_name}',
                                                                 # '{epoch:d}'),
-    checkpoint_callback = ModelCheckpoint(filepath=os.path.join('{hparams.ckpt_path}/{hparams.exp_name}',
+    checkpoint_callback = ModelCheckpoint(filepath=os.path.join(f'{hparams.save_ckpt_path}/{hparams.exp_name}',
                                                                 '{epoch:d}'),
                                           monitor='val/loss',
                                           mode='min',
@@ -176,7 +182,7 @@ if __name__ == '__main__':
                       progress_bar_refresh_rate=1,
                       gpus=hparams.num_gpus,
                       distributed_backend='ddp' if hparams.num_gpus>1 else None,
-                      num_sanity_val_steps=1,
+                      num_sanity_val_steps=1, #changed to 0 from 1
                       benchmark=True,
                       profiler=hparams.num_gpus==1)
 

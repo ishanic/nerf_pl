@@ -1,8 +1,8 @@
 {
     "exp": "silica",
     "dataset_name": "llff",
-    "root_dir": "/mnt/external/silica",
-    "save_ckpt_path": "/mnt/external/silica",
+    "root_dir": "/home/ischakra/data/silica/",
+    "save_ckpt_path": "/home/ischakra/data/models/",
     "N_importance": 64,
     "img_wh": [4032, 3024],
     "num_epochs": 20,

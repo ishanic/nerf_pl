@@ -294,6 +294,6 @@ if __name__ == "__main__":
     face['vertex_indices'] = triangles
 
     PlyData([PlyElement.describe(vertex_all, 'vertex'), 
-             PlyElement.describe(face, 'face')]).write(f'{args.scene_name}.ply')
+             PlyElement.describe(face, 'face')]).write(f'{args.scene_name}_colored.ply')
 
     print('Done!')
