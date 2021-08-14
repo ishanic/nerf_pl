@@ -154,7 +154,7 @@ if __name__ == '__main__':
     system = NeRFSystem(hparams)
     # checkpoint_callback = ModelCheckpoint(filepath=os.path.join(f'ckpts/{hparams.exp_name}',
                                                                 # '{epoch:d}'),
-    checkpoint_callback = ModelCheckpoint(filepath=os.path.join('{hparams.ckpt_path}/{hparams.exp_name}',
+    checkpoint_callback = ModelCheckpoint(filepath=os.path.join(f'{hparams.save_ckpt_path}/{hparams.exp_name}',
                                                                 '{epoch:d}'),
                                           monitor='val/loss',
                                           mode='min',

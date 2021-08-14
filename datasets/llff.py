@@ -6,7 +6,8 @@ import os
 from PIL import Image
 from torchvision import transforms as T
 
-from .ray_utils import *
+# from .ray_utils import *
+from ray_utils import *
 
 # use tips mentioned here for arbitrary datasets:
 # https://github.com/kwea123/nerf_pl/issues/50
@@ -214,13 +215,13 @@ class LLFFDataset(Dataset):
         # See https://github.com/bmild/nerf/issues/34
         # near_original = self.bounds.min()
         near_original = self.poses[...,3].min()
-        scale_factor = near_original*0.75 # 0.75 is the default parameter
+        # scale_factor = near_original*0.75 # 0.75 is the default parameter
                                           # the nearest depth is at 1/0.75=1.33
-        # scale_factor = near_original*4
+        scale_factor = near_original*.95
         # scale_factor = np.sqrt(np.mean(np.sum(np.square(distances_from_center))))
         self.bounds /= scale_factor
         self.poses[..., 3] /= scale_factor
-        print(self.poses[...,3].min(), self.poses[...,3].max())
+        print(self.bounds.min(), self.poses[...,3].min(), self.poses[...,3].max())
         
         # ray directions for all pixels, same for all images (same H, W, focal)
         self.directions = \
@@ -333,9 +334,9 @@ class LLFFDataset(Dataset):
 
 if __name__ == '__main__':
     # img_wh = (1440, 1920)
-    # img_wh = (4032, 3024)
-    img_wh = (4512, 3008)
+    img_wh = (4032, 3024)
+    # img_wh = (4512, 3008)
     # dataset = LLFFDataset('/home/ischakra/data/objectron-cup/example_0/', 'val',spheric_poses=True, img_wh=img_wh)
-    # dataset = LLFFDataset('/home/ischakra/data/silica/', 'val',spheric_poses=True, img_wh=img_wh)
-    dataset = LLFFDataset('/data/synthetic/nerf_real_360/veena_player/', 'train',spheric_poses=True, img_wh=img_wh)
+    dataset = LLFFDataset('/data/ischakra/synthetic/silica/', 'val',spheric_poses=True, img_wh=img_wh)
+    # dataset = LLFFDataset('/data/synthetic/nerf_real_360/veena_player/', 'train',spheric_poses=True, img_wh=img_wh)
     dataset.read_meta()
