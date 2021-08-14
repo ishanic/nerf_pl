@@ -211,7 +211,7 @@ class LLFFDataset(Dataset):
         # hacks for debugging
         # self.image_paths = self.image_paths[0:10]
         # val_idx = 1
-        # val_idx = np.argmin(distances_from_center) # choose val image as the closest to
+        val_idx = np.argmin(distances_from_center) # choose val image as the closest to
         #                                            # center image
 
         # Step 3: correct scale so that the nearest depth is at a little more than 1.0
