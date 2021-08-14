@@ -112,6 +112,7 @@ def render_rays(models,
                 depth_final: (N_rays) depth map
                 weights: (N_rays, N_samples_): weights of each sample
         """
+        # 4096 x 128 x 3 ~ 524K total number of xyz positions
         N_samples_ = xyz_.shape[1]
         # Embed directions
         xyz_ = xyz_.view(-1, 3) # (N_rays*N_samples_, 3)
@@ -122,23 +123,30 @@ def render_rays(models,
         # Perform model inference to get rgb and raw sigma
         B = xyz_.shape[0]
         out_chunks = []
+        # chunk size = 1024*32 = 32768 chunk size
         for i in range(0, B, chunk):
-            # Embed positions by chunk
+            # Embed positions by chunk 3-> 63 dims
             xyz_embedded = embedding_xyz(xyz_[i:i+chunk])
+            
+            # 63 + 27 = 90 dims concatenated embedding
             if not weights_only:
                 xyzdir_embedded = torch.cat([xyz_embedded,
                                              dir_embedded[i:i+chunk]], 1)
             else:
                 xyzdir_embedded = xyz_embedded
+            
             out_chunks += [model(xyzdir_embedded, sigma_only=weights_only)]
-
+        import pdb; pdb.set_trace()
+        # Unlike the paper, both occupancy and RGB are estimated from xyz+dir embeddings.
+        # How does it still maintain multiview consistency?
+        # 90 dims -> 4 dims = [r,g,b,sigma]
         out = torch.cat(out_chunks, 0)
         if weights_only:
             sigmas = out.view(N_rays, N_samples_)
         else:
             rgbsigma = out.view(N_rays, N_samples_, 4)
-            rgbs = rgbsigma[..., :3] # (N_rays, N_samples_, 3)
-            sigmas = rgbsigma[..., 3] # (N_rays, N_samples_)
+            rgbs = rgbsigma[..., :3] # (N_rays, N_samples_, 3) = torch.Size([4096, 128, 3])
+            sigmas = rgbsigma[..., 3] # (N_rays, N_samples_) = torch.Size([4096, 128]), relu later with noise
 
         # Convert these values using volume rendering (Section 4)
         deltas = z_vals[:, 1:] - z_vals[:, :-1] # (N_rays, N_samples_-1)
@@ -147,6 +155,7 @@ def render_rays(models,
 
         # Multiply each distance by the norm of its corresponding direction ray
         # to convert to real world distance (accounts for non-unit directions).
+        # from parallel unit rays to perspective non-unit rays
         deltas = deltas * torch.norm(dir_.unsqueeze(1), dim=-1)
 
         noise = torch.randn(sigmas.shape, device=sigmas.device) * noise_std
