@@ -25,6 +25,7 @@ from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.logging import TestTubeLogger
 
 import json
+import pdb
 
 class NeRFSystem(LightningModule):
     def __init__(self, hparams):
@@ -55,6 +56,7 @@ class NeRFSystem(LightningModule):
     def forward(self, rays):
         """Do batched inference on rays using chunk."""
         B = rays.shape[0]
+        
         results = defaultdict(list)
         for i in range(0, B, self.hparams.chunk):
             rendered_ray_chunks = \
@@ -74,6 +76,7 @@ class NeRFSystem(LightningModule):
 
         for k, v in results.items():
             results[k] = torch.cat(v, 0)
+        pdb.set_trace()            
         return results
 
     def prepare_data(self):

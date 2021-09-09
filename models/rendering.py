@@ -1,6 +1,6 @@
 import torch
 from torchsearchsorted import searchsorted
-
+import pdb;
 __all__ = ['render_rays']
 
 """
@@ -122,6 +122,7 @@ def render_rays(models,
         # Perform model inference to get rgb and raw sigma
         B = xyz_.shape[0]
         out_chunks = []
+
         for i in range(0, B, chunk):
             # Embed positions by chunk
             xyz_embedded = embedding_xyz(xyz_[i:i+chunk])
@@ -129,6 +130,7 @@ def render_rays(models,
                 xyzdir_embedded = torch.cat([xyz_embedded,
                                              dir_embedded[i:i+chunk]], 1)
             else:
+                # no need of direction is only modeling occupancy/opacity/alpha
                 xyzdir_embedded = xyz_embedded
             out_chunks += [model(xyzdir_embedded, sigma_only=weights_only)]
 
@@ -141,12 +143,14 @@ def render_rays(models,
             sigmas = rgbsigma[..., 3] # (N_rays, N_samples_)
 
         # Convert these values using volume rendering (Section 4)
+        pdb.set_trace()
         deltas = z_vals[:, 1:] - z_vals[:, :-1] # (N_rays, N_samples_-1)
         delta_inf = 1e10 * torch.ones_like(deltas[:, :1]) # (N_rays, 1) the last delta is infinity
         deltas = torch.cat([deltas, delta_inf], -1)  # (N_rays, N_samples_)
 
         # Multiply each distance by the norm of its corresponding direction ray
         # to convert to real world distance (accounts for non-unit directions).
+        # typically the directions are unit, so no change
         deltas = deltas * torch.norm(dir_.unsqueeze(1), dim=-1)
 
         noise = torch.randn(sigmas.shape, device=sigmas.device) * noise_std
@@ -154,7 +158,7 @@ def render_rays(models,
         # compute alpha by the formula (3)
         alphas = 1-torch.exp(-deltas*torch.relu(sigmas+noise)) # (N_rays, N_samples_)
         alphas_shifted = \
-            torch.cat([torch.ones_like(alphas[:, :1]), 1-alphas+1e-10], -1) # [1, a1, a2, ...]
+            torch.cat([torch.ones_like(alphas[:, :1]), 1-alphas+1e-10], -1) # [1, 1-a1, 1-a2, ...]
         weights = \
             alphas * torch.cumprod(alphas_shifted, -1)[:, :-1] # (N_rays, N_samples_)
         weights_sum = weights.sum(1) # (N_rays), the accumulated opacity along the rays
@@ -180,7 +184,7 @@ def render_rays(models,
     # Decompose the inputs
     N_rays = rays.shape[0]
     rays_o, rays_d = rays[:, 0:3], rays[:, 3:6] # both (N_rays, 3)
-    near, far = rays[:, 6:7], rays[:, 7:8] # both (N_rays, 1)
+    near, far = rays[:, 6:7], rays[:, 7:8] # both (N_rays, 1) array([1.0526316, 3.42377  ] is scaled to 1.05 minimum distance
 
     # Embed direction
     dir_embedded = embedding_dir(rays_d) # (N_rays, embed_dir_channels)
@@ -188,8 +192,9 @@ def render_rays(models,
     # Sample depth points
     z_steps = torch.linspace(0, 1, N_samples, device=rays.device) # (N_samples)
     if not use_disp: # use linear sampling in depth space
+        # for N_samples = 128, z_step = 0.0187, [1.0526, 1.0713, 1.0900, 1.1086, ...]
         z_vals = near * (1-z_steps) + far * z_steps
-    else: # use linear sampling in disparity space
+    else: # use linear sampling in disparity space, the delta(z_vals) gap decreases over the ray samples
         z_vals = 1/(1/near * (1-z_steps) + 1/far * z_steps)
 
     z_vals = z_vals.expand(N_rays, N_samples)

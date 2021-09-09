@@ -47,12 +47,15 @@ storage:
     # container_name: objectron
 
 jobs:
-- name: silica-G8-aml
+- name: silica-G8-aml-small
   sku: G8
   command:
   - bash env.sh  
   - python train.py --load_json configs/config_silica.json --num_gpus 8
-# - name: vasedeck-G8-aml-bsx4
+  submit_args:
+    container_args:
+        shm_size: 64g
+# - name: banana-G8-aml-bsx4-boundsmin-128_128
 #   sku: G8
 #   command:
 #   - bash env.sh  

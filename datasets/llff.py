@@ -8,6 +8,7 @@ from torchvision import transforms as T
 
 from .ray_utils import *
 # from ray_utils import *
+import pdb
 
 # use tips mentioned here for arbitrary datasets:
 # https://github.com/kwea123/nerf_pl/issues/50
@@ -36,7 +37,7 @@ def average_poses(poses):
     Outputs:
         pose_avg: (3, 4) the average pose
     """
-    # 1. Compute the center
+    # 1. Compute the center: all the last columns (translations), mean across images
     center = poses[..., 3].mean(0) # (3)
 
     # 2. Compute the z axis
@@ -59,6 +60,7 @@ def average_poses(poses):
 def center_poses(poses):
     """
     Center the poses so that we can use NDC.
+    # the average pose should be identity after this step
     See https://github.com/bmild/nerf/issues/34
 
     Inputs:
@@ -68,7 +70,6 @@ def center_poses(poses):
         poses_centered: (N_images, 3, 4) the centered poses
         pose_avg: (3, 4) the average pose
     """
-
     pose_avg = average_poses(poses) # (3, 4)
     pose_avg_homo = np.eye(4)
     pose_avg_homo[:3] = pose_avg # convert to homogeneous coordinate for faster computation
@@ -186,12 +187,10 @@ class LLFFDataset(Dataset):
             assert len(poses_bounds) == len(self.image_paths), \
                 'Mismatch between number of images and number of poses! Please rerun COLMAP!'
 
-        
-
         poses = poses_bounds[:, :15].reshape(-1, 3, 5) # (N_images, 3, 5)
-        self.bounds = poses_bounds[:, -2:] # (N_images, 2)
+        self.bounds = poses_bounds[:, -2:] # (N_images, 2) near far for each image
         # Step 1: rescale focal length according to training resolution
-        H, W, self.focal = poses[0, :, -1] # original intrinsics, same for all images
+        H, W, self.focal = poses[0, :, -1] # original intrinsics, same for all images, Nx3x5, any image, all rows, last column 
         assert H*self.img_wh[0] == W*self.img_wh[1], \
             f'You must set @img_wh to have the same aspect ratio as ({W}, {H}) !'
         
@@ -209,25 +208,19 @@ class LLFFDataset(Dataset):
         distances_from_center = np.linalg.norm(self.poses[..., 3], axis=1)
 
         # hacks for debugging
-        # self.image_paths = self.image_paths[0:10]
-        # val_idx = 1
-        val_idx = np.argmin(distances_from_center) # choose val image as the closest to
+        self.image_paths = self.image_paths[0:10]
+        val_idx = 1 #np.argmin(distances_from_center) # choose val image as the closest to
         #                                            # center image
 
         # Step 3: correct scale so that the nearest depth is at a little more than 1.0
         # See https://github.com/bmild/nerf/issues/34
-        # import pdb; pdb.set_trace()
-
-        # near_original = self.bounds.min()
-        near_original = self.poses[...,3].min()
-        scale_factor = near_original*0.75 # 0.75 is the default parameter
+        near_original = self.bounds.min()
+        # near_original = self.poses[...,3].min() # doesn't work
+        scale_factor = near_original*0.95 # 0.75 is the default parameter
                                           # the nearest depth self.bounds.min() is at 1/0.75=1.33
-        # scale_factor = near_original*1.5
-        # scale_factor = near_original*(1/1.25)
-        # scale_factor = np.sqrt(np.mean(np.sum(np.square(distances_from_center))))
+
         self.bounds /= scale_factor
         self.poses[..., 3] /= scale_factor
-        print(self.bounds.min(), self.poses[...,3].min(), self.poses[...,3].max())
         
         # ray directions for all pixels, same for all images (same H, W, focal)
         # Pixel coordinates to camera coordinates. 
@@ -264,8 +257,8 @@ class LLFFDataset(Dataset):
                                      # near and far in NDC are always 0 and 1
                                      # See https://github.com/bmild/nerf/issues/34
                 else:
-                    near = self.bounds.min()
-                    # far = min(8 * near, self.bounds.max()) # focus on central object only
+                    near = self.bounds.min() #1.33
+                    # far = min(8 * near, self.bounds.max()) # focus on central object only, 8*1.33
                     far = self.bounds.max()
 
                 self.all_rays += [torch.cat([rays_o, rays_d, 
@@ -275,7 +268,8 @@ class LLFFDataset(Dataset):
                                  
             self.all_rays = torch.cat(self.all_rays, 0) # ((N_images-1)*h*w, 8)
             self.all_rgbs = torch.cat(self.all_rgbs, 0) # ((N_images-1)*h*w, 3)
-        
+            
+            
         elif self.split == 'val':
             print('val image is', self.image_paths[val_idx])
             self.c2w_val = self.poses[val_idx]
@@ -345,8 +339,10 @@ class LLFFDataset(Dataset):
 if __name__ == '__main__':
     # img_wh = (1440, 1920)
     # img_wh = (4032, 3024)
-    img_wh = (4512, 3008)
+    img_wh = (2016, 1512)
+    # img_wh = (4512, 3008)
     # dataset = LLFFDataset('/home/ischakra/data/objectron-cup/example_0/', 'val',spheric_poses=True, img_wh=img_wh)
     # train loads all images, and all rays in a single tensor. 
-    dataset = LLFFDataset('/data/synthetic/nerf_real_360/veena_player/', 'train',spheric_poses=True, img_wh=img_wh)
+    # dataset = LLFFDataset('/data/synthetic/nerf_real_360/veena_player/', 'train',spheric_poses=True, img_wh=img_wh)
+    dataset = LLFFDataset('/data/ischakra/synthetic/banana', 'train',spheric_poses=True, img_wh=img_wh)
     dataset.read_meta()

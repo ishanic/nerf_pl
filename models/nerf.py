@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+import pdb
 
 class Embedding(nn.Module):
     def __init__(self, in_channels, N_freqs, logscale=True):
@@ -12,7 +13,7 @@ class Embedding(nn.Module):
         self.in_channels = in_channels
         self.funcs = [torch.sin, torch.cos]
         self.out_channels = in_channels*(len(self.funcs)*N_freqs+1)
-
+        
         if logscale:
             self.freq_bands = 2**torch.linspace(0, N_freqs-1, N_freqs)
         else:
@@ -34,7 +35,6 @@ class Embedding(nn.Module):
         for freq in self.freq_bands:
             for func in self.funcs:
                 out += [func(freq*x)]
-
         return torch.cat(out, -1)
 
 
@@ -107,7 +107,6 @@ class NeRF(nn.Module):
         xyz_ = input_xyz
         for i in range(self.D):
             if i in self.skips:
-                import pdb; pdb.set_trace()
                 xyz_ = torch.cat([input_xyz, xyz_], -1)
             xyz_ = getattr(self, f"xyz_encoding_{i+1}")(xyz_)
 
@@ -124,3 +123,16 @@ class NeRF(nn.Module):
         out = torch.cat([rgb, sigma], -1)
 
         return out
+
+if __name__ == "__main__":
+    # in_channels = 3
+    # N_freqs = 10
+    # mock_rays_d = torch.rand(4096, 3)
+    # emb = Embedding(in_channels, N_freqs, logscale=True)
+    # out = emb(mock_rays_d)
+
+    renderer = NeRF()
+    # input5d = torch.rand(4096, 128, 90)
+    input5d = torch.rand(4096, 90)
+    out = renderer(input5d)
+    pdb.set_trace()
