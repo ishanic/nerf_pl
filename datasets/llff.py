@@ -6,10 +6,11 @@ import os
 from PIL import Image
 from torchvision import transforms as T
 
-from .ray_utils import *
-# from ray_utils import *
+# from .ray_utils import *
+from ray_utils import *
 import pdb
-
+import random
+import cv2
 # use tips mentioned here for arbitrary datasets:
 # https://github.com/kwea123/nerf_pl/issues/50
 
@@ -172,7 +173,7 @@ class LLFFDataset(Dataset):
         self.img_wh = img_wh
         self.spheric_poses = spheric_poses
         self.val_num = max(1, val_num) # at least 1
-        self.define_transforms()
+        self.define_transforms() #totensor
 
         self.read_meta()
         self.white_back = False
@@ -225,9 +226,10 @@ class LLFFDataset(Dataset):
         # ray directions for all pixels, same for all images (same H, W, focal)
         # Pixel coordinates to camera coordinates. 
         # The ray from center pixel to camera has direction = [0,0,-1]
-        self.directions = \
+        self.directions, W_index, H_index = \
             get_ray_directions(self.img_wh[1], self.img_wh[0], self.focal) # (H, W, 3)
-            
+        W_index = W_index.reshape(-1)
+        H_index = H_index.reshape(-1)
         if self.split == 'train': # create buffer of all rays and rgb data
                                   # use first N_images-1 to train, the LAST is val
             self.all_rays = []
@@ -260,15 +262,39 @@ class LLFFDataset(Dataset):
                     near = self.bounds.min() #1.33
                     # far = min(8 * near, self.bounds.max()) # focus on central object only, 8*1.33
                     far = self.bounds.max()
-
-                self.all_rays += [torch.cat([rays_o, rays_d, 
+                # (IC) add image id
+                self.all_rays += [torch.cat([i*torch.ones_like(rays_o[:, :1]), 
+                                             rays_o, rays_d, 
                                              near*torch.ones_like(rays_o[:, :1]),
                                              far*torch.ones_like(rays_o[:, :1])],
-                                             1)] # (h*w, 8)
+                                             1)] # (h*w, 9)
                                  
             self.all_rays = torch.cat(self.all_rays, 0) # ((N_images-1)*h*w, 8)
             self.all_rgbs = torch.cat(self.all_rgbs, 0) # ((N_images-1)*h*w, 3)
             
+            tgt_image_id = 0
+            tgt_rays = self.all_rays[(self.all_rays[:, 0] == tgt_image_id).nonzero().squeeze(1)]
+            selected_id = random.randint(tgt_rays.size(0)/4,3*tgt_rays.size(0)/4)
+            
+            print(self.img_wh, W, H, selected_id, W_index[selected_id], H_index[selected_id])
+            tgt_image = np.array(Image.open(self.image_paths[tgt_image_id]))
+            cv2.circle(tgt_image, tuple(np.array([W_index[selected_id], H_index[selected_id]])), 10, (255,0,255), 10)
+            tgt_rays = tgt_rays[selected_id,:].unsqueeze(0)
+            
+            src_image_id = 1
+            # if src and tgt are same, tgt_rays[...,1:4] == poses[src_image][:,3]
+            
+            coords_1, coords_2 = project_rays(tgt_rays[...,1:4], tgt_rays[...,4:7], torch.FloatTensor(self.poses[src_image_id]), self.focal, H, W)
+            src_image = np.array(Image.open(self.image_paths[src_image_id]))
+            for coord in coords_1:
+                cv2.circle(src_image, tuple(np.array(coord)), 2, (255,0,0), 10)
+            for coord in coords_2:
+                cv2.circle(src_image, tuple(np.array(coord)), 2, (0,0,255), 5)
+
+            cv2.imwrite("tgt_image.jpg", tgt_image)
+            cv2.imwrite("src_image.jpg", src_image)
+            pdb.set_trace()
+
             
         elif self.split == 'val':
             print('val image is', self.image_paths[val_idx])
@@ -326,7 +352,7 @@ class LLFFDataset(Dataset):
 
             sample = {'rays': rays,
                       'c2w': c2w}
-
+            
             if self.split == 'val':
                 img = Image.open(self.image_path_val).convert('RGB')
                 img = img.resize(self.img_wh, Image.LANCZOS)
@@ -338,11 +364,15 @@ class LLFFDataset(Dataset):
 
 if __name__ == '__main__':
     # img_wh = (1440, 1920)
-    # img_wh = (4032, 3024)
-    img_wh = (2016, 1512)
+    img_wh = (4032, 3024)
+    # img_wh = (2016, 1512)
     # img_wh = (4512, 3008)
     # dataset = LLFFDataset('/home/ischakra/data/objectron-cup/example_0/', 'val',spheric_poses=True, img_wh=img_wh)
     # train loads all images, and all rays in a single tensor. 
     # dataset = LLFFDataset('/data/synthetic/nerf_real_360/veena_player/', 'train',spheric_poses=True, img_wh=img_wh)
     dataset = LLFFDataset('/data/ischakra/synthetic/banana', 'train',spheric_poses=True, img_wh=img_wh)
-    dataset.read_meta()
+    for idx in range(0, len(dataset)):
+        sample = dataset[idx]
+    # dataset.read_meta()
+    # project_rays(directions, c2w_tgt, c2w_src)
+    # project_rays(src=0,tgt=1)

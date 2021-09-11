@@ -1,7 +1,7 @@
 import torch
 from kornia import create_meshgrid
-
-
+import pdb
+import numpy as np
 def get_ray_directions(H, W, focal):
     """
     Get ray directions for all pixels in camera coordinate.
@@ -24,10 +24,11 @@ def get_ray_directions(H, W, focal):
     # see https://github.com/bmild/nerf/issues/24
     # (-W/2 to W/2)/focal.
     # the direction of the center pixel will be [0,0,-1]
+    
     directions = \
         torch.stack([(i-W/2)/focal, -(j-H/2)/focal, -torch.ones_like(i)], -1) # (H, W, 3)
 
-    return directions
+    return directions, i, j
 
 
 def get_rays(directions, c2w):
@@ -56,6 +57,52 @@ def get_rays(directions, c2w):
 
     return rays_o, rays_d
 
+def project_rays(rays_o, rays_d, c2w_src, focal, H, W):
+    # project rays from target samples onto source samples. See NerFORMER, figure 5
+    N_rays = rays_o.size(0)
+    N_samples = 128
+    near = 1; far = 4
+    K = torch.tensor([[focal, 0, W/2],[0, focal, H/2],[0, 0, 1]], dtype=torch.float32)
+    z_steps = torch.linspace(0, 1, N_samples, device=rays_o.device) # (N_samples)
+    z_vals = near * (1-z_steps) + far * z_steps
+    z_vals = z_vals.expand(N_rays, N_samples)
+    xyz_tgt = rays_o.unsqueeze(1) + rays_d.unsqueeze(1) * z_vals.unsqueeze(2)
+    xyz_tgt = xyz_tgt[0]
+
+    c2w_src_homo = torch.eye(4,4)
+    c2w_src_homo[:3,:] = c2w_src
+    xyz_tgt_homo = torch.ones(xyz_tgt.size(0),4)
+    xyz_tgt_homo[:,:3] = xyz_tgt
+    # xyz_cam = xyz_tgt_homo @ torch.inverse(c2w_src_homo)
+    xyz_cam = (torch.inverse(c2w_src_homo) @ xyz_tgt_homo.T).T
+    
+    # flip y and z
+    xyz_cam[:,1] = -1*xyz_cam[:,1]
+    xyz_cam[:,2] = -1*xyz_cam[:,2]
+    
+    xyz_img = (K @ xyz_cam[...,:3].T).T
+    xyz_img[:,0] = xyz_img[:,0]/xyz_img[:,2]
+    xyz_img[:,1] = xyz_img[:,1]/xyz_img[:,2]
+    
+    xyz_tgt = xyz_tgt.numpy()
+    xyz_tgt_homo = xyz_tgt_homo.numpy()
+    P_c2w = np.concatenate([c2w_src.numpy(), np.array([0, 0, 0, 1]).reshape(1, 4)], 0)
+    P_w2c = np.linalg.inv(P_c2w)[:3] # (3, 4)
+    ## project vertices from world coordinate to camera coordinate
+    vertices_cam = (P_w2c @ xyz_tgt_homo.T) # (3, N) in "right up back"
+    vertices_cam[1:] *= -1 # (3, N) in "right down forward"
+    ## project vertices from camera coordinate to pixel coordinate
+    vertices_image = (K.numpy() @ vertices_cam).T # (N, 3)
+    depth = vertices_image[:, -1:]+1e-5 # the depth of the vertices, used as far plane
+    vertices_image = vertices_image[:, :2]/depth
+    vertices_image = vertices_image.astype(np.float32)
+    vertices_image[:, 0] = np.clip(vertices_image[:, 0], 0, W-1)
+    vertices_image[:, 1] = np.clip(vertices_image[:, 1], 0, H-1)
+
+    # pdb.set_trace()
+    return xyz_img[...,:2].int(), vertices_image
+    
+    
 
 def get_ndc_rays(H, W, focal, near, rays_o, rays_d):
     """

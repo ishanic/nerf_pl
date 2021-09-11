@@ -6,6 +6,7 @@ results/
 *.vol
 *.ckpt
 *.dae
+*.jpg
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
