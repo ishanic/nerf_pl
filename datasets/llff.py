@@ -364,13 +364,14 @@ class LLFFDataset(Dataset):
 
 if __name__ == '__main__':
     # img_wh = (1440, 1920)
-    img_wh = (4032, 3024)
-    # img_wh = (2016, 1512)
+    # img_wh = (4032, 3024)
+    img_wh = (1075, 1912)
     # img_wh = (4512, 3008)
     # dataset = LLFFDataset('/home/ischakra/data/objectron-cup/example_0/', 'val',spheric_poses=True, img_wh=img_wh)
     # train loads all images, and all rays in a single tensor. 
     # dataset = LLFFDataset('/data/synthetic/nerf_real_360/veena_player/', 'train',spheric_poses=True, img_wh=img_wh)
-    dataset = LLFFDataset('/data/ischakra/synthetic/banana', 'train',spheric_poses=True, img_wh=img_wh)
+    # dataset = LLFFDataset('/data/ischakra/synthetic/banana', 'train',spheric_poses=True, img_wh=img_wh)
+    dataset = LLFFDataset('/data/ischakra/co3d/categories/cup/14_158_900', 'train',spheric_poses=True, img_wh=img_wh)
     for idx in range(0, len(dataset)):
         sample = dataset[idx]
     # dataset.read_meta()
