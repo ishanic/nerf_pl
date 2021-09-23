@@ -143,7 +143,7 @@ def render_rays(models,
             sigmas = rgbsigma[..., 3] # (N_rays, N_samples_)
 
         # Convert these values using volume rendering (Section 4)
-        pdb.set_trace()
+        # pdb.set_trace()
         deltas = z_vals[:, 1:] - z_vals[:, :-1] # (N_rays, N_samples_-1)
         delta_inf = 1e10 * torch.ones_like(deltas[:, :1]) # (N_rays, 1) the last delta is infinity
         deltas = torch.cat([deltas, delta_inf], -1)  # (N_rays, N_samples_)

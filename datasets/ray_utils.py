@@ -2,7 +2,7 @@ import torch
 from kornia import create_meshgrid
 import pdb
 import numpy as np
-def get_ray_directions(H, W, focal):
+def get_ray_directions(H, W, focal, principal_point):
     """
     Get ray directions for all pixels in camera coordinate.
     Reference: https://www.scratchapixel.com/lessons/3d-basic-rendering/
@@ -24,9 +24,14 @@ def get_ray_directions(H, W, focal):
     # see https://github.com/bmild/nerf/issues/24
     # (-W/2 to W/2)/focal.
     # the direction of the center pixel will be [0,0,-1]
-    
+    # if sum(principal_point) == 0:
+        # directions = \
+            # torch.stack([(i-W/2)/focal, -(j-H/2)/focal, -torch.ones_like(i)], -1) # (H, W, 3)
+    # else:
     directions = \
-        torch.stack([(i-W/2)/focal, -(j-H/2)/focal, -torch.ones_like(i)], -1) # (H, W, 3)
+        torch.stack([(i-principal_point[0])/focal[0], -(j-principal_point[1])/focal[1], -torch.ones_like(i)], -1) # (H, W, 3)
+    # directions = \
+        # torch.stack([(i-principal_point[0])/focal, -(j-principal_point[1])/focal, -torch.ones_like(i)], -1) # (H, W, 3)
 
     return directions, i, j
 
@@ -57,12 +62,14 @@ def get_rays(directions, c2w):
 
     return rays_o, rays_d
 
-def project_rays(rays_o, rays_d, c2w_src, focal, H, W):
+def project_rays(rays_o, rays_d, c2w_src, focal, H, W, principal_point):
     # project rays from target samples onto source samples. See NerFORMER, figure 5
+    # pdb.set_trace()
     N_rays = rays_o.size(0)
     N_samples = 128
     near = 1; far = 4
-    K = torch.tensor([[focal, 0, W/2],[0, focal, H/2],[0, 0, 1]], dtype=torch.float32)
+    K = torch.tensor([[focal[0], 0, principal_point[0]],[0, focal[1], principal_point[1]],[0, 0, 1]], dtype=torch.float32)
+    # K = torch.tensor([[focal, 0, principal_point[0]],[0, focal, principal_point[1]],[0, 0, 1]], dtype=torch.float32)
     z_steps = torch.linspace(0, 1, N_samples, device=rays_o.device) # (N_samples)
     z_vals = near * (1-z_steps) + far * z_steps
     z_vals = z_vals.expand(N_rays, N_samples)

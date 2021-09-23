@@ -16,6 +16,8 @@ def get_opts():
                         help='which dataset to train/val')
     parser.add_argument('--img_wh', nargs="+", type=int, default=[800, 800],
                         help='resolution (img_w, img_h) of the image')
+    parser.add_argument('--crop_images', nargs="+", type=bool, default=False,
+                        help='using boxes_xyxy.npy file to find crop boundaries')
     parser.add_argument('--spheric_poses', default=True, action="store_true",
                         help='whether images are taken in spheric poses (for llff)')
 

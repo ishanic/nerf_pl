@@ -76,13 +76,14 @@ class NeRFSystem(LightningModule):
 
         for k, v in results.items():
             results[k] = torch.cat(v, 0)
-        pdb.set_trace()            
+        # pdb.set_trace()            
         return results
 
     def prepare_data(self):
         dataset = dataset_dict[self.hparams.dataset_name]
         kwargs = {'root_dir': self.hparams.root_dir,
-                  'img_wh': tuple(self.hparams.img_wh)}
+                  'img_wh': tuple(self.hparams.img_wh),
+                  'crop': self.hparams.crop_images}
         if self.hparams.dataset_name == 'llff':
             kwargs['spheric_poses'] = self.hparams.spheric_poses
             kwargs['val_num'] = self.hparams.num_gpus

@@ -31,6 +31,9 @@ def get_opts():
                         help='test or test_train')
     parser.add_argument('--img_wh', nargs="+", type=int, default=[800, 800],
                         help='resolution (img_w, img_h) of the image')
+    parser.add_argument('--crop_images', nargs="+", type=bool, default=False,
+                        help='using boxes_xyxy.npy file to find crop boundaries')
+
     parser.add_argument('--spheric_poses', default=False, action="store_true",
                         help='whether images are taken in spheric poses (for llff)')
 
@@ -92,7 +95,8 @@ if __name__ == "__main__":
 
     kwargs = {'root_dir': args.root_dir,
               'split': args.split,
-              'img_wh': tuple(args.img_wh)}
+              'img_wh': tuple(args.img_wh),
+              'crop': args.crop_images}
     if args.dataset_name == 'llff':
         kwargs['spheric_poses'] = args.spheric_poses
     dataset = dataset_dict[args.dataset_name](**kwargs)

@@ -31,6 +31,8 @@ def get_opts():
                         help='scene name, used as output ply filename')
     parser.add_argument('--img_wh', nargs="+", type=int, default=[800, 800],
                         help='resolution (img_w, img_h) of the image')
+    parser.add_argument('--crop_images', nargs="+", type=bool, default=False,
+                        help='using boxes_xyxy.npy file to find crop boundaries')
 
     parser.add_argument('--N_samples', type=int, default=64,
                         help='number of samples to infer the acculmulated opacity')
@@ -93,16 +95,17 @@ def f(models, embeddings, rays, N_samples, N_importance, chunk, white_back):
 
 if __name__ == "__main__":
     args = get_opts()
-
     kwargs = {'root_dir': args.root_dir,
               'img_wh': tuple(args.img_wh)}
     if args.dataset_name == 'llff':
         kwargs['spheric_poses'] = True
-        kwargs['split'] = 'test'
+        # kwargs['split'] = 'test'
+        kwargs['split'] = 'train'
+        kwargs['crop'] = bool(args.crop_images)
     else:
         kwargs['split'] = 'train'
     dataset = dataset_dict[args.dataset_name](**kwargs)
-
+    # pdb.set_trace()
     embedding_xyz = Embedding(3, 10)
     embedding_dir = Embedding(3, 4)
     embeddings = [embedding_xyz, embedding_dir]
@@ -176,9 +179,9 @@ if __name__ == "__main__":
     # perform color prediction
     # Step 0. define constants (image width, height and intrinsics)
     W, H = args.img_wh
-    K = np.array([[dataset.focal, 0, W/2],
-                  [0, dataset.focal, H/2],
-                  [0,             0,   1]]).astype(np.float32)
+    # K = np.array([[dataset.focal, 0, W/2],
+    #               [0, dataset.focal, H/2],
+    #               [0,             0,   1]]).astype(np.float32)
 
     # Step 1. transform vertices into world coordinate
     N_vertices = len(vertices_)
@@ -213,6 +216,10 @@ if __name__ == "__main__":
         for idx in tqdm(range(len(dataset.image_paths))):
             ## read image of this pose
             image = Image.open(dataset.image_paths[idx]).convert('RGB')
+            if args.crop_images:
+                xmin, ymin, xmax, ymax, _, _ = dataset.boxes_xyxy[idx,:]
+                image = image.crop((xmin, ymin, xmax, ymax))
+
             image = image.resize(tuple(args.img_wh), Image.LANCZOS)
             image = np.array(image)
 
@@ -223,6 +230,12 @@ if __name__ == "__main__":
             vertices_cam = (P_w2c @ vertices_homo.T) # (3, N) in "right up back"
             vertices_cam[1:] *= -1 # (3, N) in "right down forward"
             ## project vertices from camera coordinate to pixel coordinate
+            # pdb.set_trace()
+            K = np.array([[dataset.focal[idx,0], 0, dataset.principal_point_px[idx, 0]],
+                  [0, dataset.focal[idx,1], dataset.principal_point_px[idx, 1]],
+                  [0,             0,   1]]).astype(np.float32)
+
+
             vertices_image = (K @ vertices_cam).T # (N, 3)
             depth = vertices_image[:, -1:]+1e-5 # the depth of the vertices, used as far plane
             vertices_image = vertices_image[:, :2]/depth
