@@ -67,7 +67,7 @@ def project_rays(rays_o, rays_d, c2w_src, focal, H, W, principal_point):
     # pdb.set_trace()
     N_rays = rays_o.size(0)
     N_samples = 128
-    near = 1; far = 4
+    near = 1; far = 10
     K = torch.tensor([[focal[0], 0, principal_point[0]],[0, focal[1], principal_point[1]],[0, 0, 1]], dtype=torch.float32)
     # K = torch.tensor([[focal, 0, principal_point[0]],[0, focal, principal_point[1]],[0, 0, 1]], dtype=torch.float32)
     z_steps = torch.linspace(0, 1, N_samples, device=rays_o.device) # (N_samples)

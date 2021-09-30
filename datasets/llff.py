@@ -198,13 +198,14 @@ class LLFFDataset(Dataset):
         
         # self.focal *= self.img_wh[0]/W
         self.focal_test = self.focal * (self.img_wh[0]/W)
-        # pdb.set_trace()
         #### crop image based on mask
         principal_point = np.zeros((1,2))
         if self.crop == True:
+            # pdb.set_trace()
             boxes_xyxy = np.load(os.path.join(self.root_dir, 'boxes_xyxy.npy')) # (N_images, 6)=> x_min,ymin,x_max,y_max,W,H
             assert len(boxes_xyxy) == len(self.image_paths), \
                     'Mismatch between number of images and number of boxes!'
+
             self.principal_point_px = -1.0 * (principal_point - 1.0) * boxes_xyxy[:,4::]/2
             self.principal_point_px -= boxes_xyxy[:,:2]
 
@@ -248,8 +249,8 @@ class LLFFDataset(Dataset):
         distances_from_center = np.linalg.norm(self.poses[..., 3], axis=1)
 
         # hacks for debugging
-        # self.image_paths = self.image_paths[0:10]
-        val_idx = np.argmin(distances_from_center) # choose val image as the closest to center image
+        self.image_paths = self.image_paths[0:10]
+        val_idx = 1 #np.argmin(distances_from_center) # choose val image as the closest to center image
 
         # Step 3: correct scale so that the nearest depth is at a little more than 1.0
         # See https://github.com/bmild/nerf/issues/34
@@ -260,7 +261,7 @@ class LLFFDataset(Dataset):
 
         self.bounds /= scale_factor
         self.poses[..., 3] /= scale_factor
-        
+        # pdb.set_trace()
         # ray directions for all pixels, same for all images (same H, W, focal)
         # Pixel coordinates to camera coordinates. 
         # The ray from center pixel to camera has direction = [0,0,-1]
@@ -304,7 +305,7 @@ class LLFFDataset(Dataset):
                 W_index = W_index.reshape(-1)
                 H_index = H_index.reshape(-1)
                 # pdb.set_trace()
-                rays_o, rays_d = get_rays(directions, c2w) # both (h*w, 3)
+                rays_o, rays_d = get_rays(directions, c2w) # both (hxwx3, 3x4)
                 
                 if not self.spheric_poses:
                     near, far = 0, 1
@@ -318,21 +319,21 @@ class LLFFDataset(Dataset):
                     # far = min(8 * near, self.bounds.max()) # focus on central object only, 8*1.33
                     far = self.bounds.max()
                 
-                # self.all_rays += [torch.cat([rays_o, rays_d, 
-                #                              near*torch.ones_like(rays_o[:, :1]),
-                #                              far*torch.ones_like(rays_o[:, :1])],
-                #                              1)] # (h*w, 9)
-
-                self.all_rays += [torch.cat([i*torch.ones_like(rays_o[:, :1]),
-                                             rays_o, rays_d, 
+                self.all_rays += [torch.cat([rays_o, rays_d, 
                                              near*torch.ones_like(rays_o[:, :1]),
                                              far*torch.ones_like(rays_o[:, :1])],
                                              1)] # (h*w, 9)
+                
+                # self.all_rays += [torch.cat([i*torch.ones_like(rays_o[:, :1]),
+                #                              rays_o, rays_d, 
+                #                              near*torch.ones_like(rays_o[:, :1]),
+                #                              far*torch.ones_like(rays_o[:, :1])],
+                #                              1)] # (h*w, 9)
                                  
             self.all_rays = torch.cat(self.all_rays, 0) # ((N_images-1)*h*w, 8)
             self.all_rgbs = torch.cat(self.all_rgbs, 0) # ((N_images-1)*h*w, 3)
 
-            vis=True
+            vis=False
             if vis == True:
                 tgt_image_id = 0
                 # pdb.set_trace()
@@ -353,11 +354,13 @@ class LLFFDataset(Dataset):
                     tgt_image = tgt_image.crop((xmin, ymin, xmax, ymax))
                     
                 tgt_image = np.array(tgt_image.resize(self.img_wh, Image.LANCZOS))                
-
-                cv2.circle(tgt_image, tuple(np.array([W_index[selected_id], H_index[selected_id]])), 10, (255,0,255), 2)
+                try:
+                    cv2.circle(tgt_image, tuple(np.array([W_index[selected_id], H_index[selected_id]])), 10, (255,0,255), 2)
+                except:
+                    pdb.set_trace()                    
                 tgt_rays = tgt_rays[selected_id,:].unsqueeze(0)
                 
-                src_image_id = 9
+                src_image_id = 1
                 # if src and tgt are same, tgt_rays[...,1:4] == poses[src_image][:,3]
                 
                 coords_1, coords_2 = project_rays(tgt_rays[...,1:4], tgt_rays[...,4:7], torch.FloatTensor(self.poses[src_image_id]), self.focal[src_image_id,:], self.img_wh[1], self.img_wh[0], self.principal_point_px[src_image_id,:])
@@ -391,7 +394,7 @@ class LLFFDataset(Dataset):
             
             if self.split.endswith('train'): # test on training set
                 self.poses_test = self.poses
-                pdb.set_trace()
+                # pdb.set_trace()
             elif not self.spheric_poses:
                 focus_depth = 3.5 # hardcoded, this is numerically close to the formula
                                   # given in the original repo. Mathematically if near=1
@@ -402,6 +405,7 @@ class LLFFDataset(Dataset):
                 # here
                 # radius = 1.1 * self.bounds.min()
                 radius = 2 * self.bounds.min()
+                # radius = .1 * self.bounds.min()
                 self.poses_test = create_spheric_poses(radius)
 
     def define_transforms(self):
@@ -424,7 +428,7 @@ class LLFFDataset(Dataset):
             if self.split == 'val':
                 c2w = torch.FloatTensor(self.c2w_val)
             else:
-                pdb.set_trace()
+                # pdb.set_trace()
                 c2w = torch.FloatTensor(self.poses_test[idx])
             directions, W_index, H_index = \
                     get_ray_directions(self.img_wh[1], self.img_wh[0], np.array([self.focal_test, self.focal_test]), principal_point=np.array([self.img_wh[0]/2, self.img_wh[1]/2])) # (H, W, 3)
@@ -445,7 +449,7 @@ class LLFFDataset(Dataset):
                               near*torch.ones_like(rays_o[:, :1]),
                               far*torch.ones_like(rays_o[:, :1])],
                               1) # (h*w, 8)
-
+            
             sample = {'rays': rays,
                       'c2w': c2w}
             
@@ -469,9 +473,10 @@ if __name__ == '__main__':
     # train loads all images, and all rays in a single tensor. 
     # dataset = LLFFDataset('/data/synthetic/nerf_real_360/veena_player/', 'train',spheric_poses=True, img_wh=img_wh)
     # dataset = LLFFDataset('/data/ischakra/synthetic/banana', 'train',spheric_poses=True, img_wh=img_wh)
-    dataset = LLFFDataset('/data/ischakra/co3d/categories/cup/14_164_1113', 'train',spheric_poses=True, img_wh=img_wh, crop=True)
+    dataset = LLFFDataset('/data/ischakra/co3d/categories/cup/30_1129_3289', 'train',spheric_poses=True, img_wh=img_wh, crop=True)
     for idx in range(0, len(dataset)):
         sample = dataset[idx]
+
     # dataset.read_meta()
     # project_rays(directions, c2w_tgt, c2w_src)
     # project_rays(src=0,tgt=1)
