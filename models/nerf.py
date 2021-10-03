@@ -107,7 +107,6 @@ class NeRF(nn.Module):
         xyz_ = input_xyz
         for i in range(self.D):
             if i in self.skips:
-                import pdb; pdb.set_trace()
                 xyz_ = torch.cat([input_xyz, xyz_], -1)
             xyz_ = getattr(self, f"xyz_encoding_{i+1}")(xyz_)
 

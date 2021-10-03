@@ -218,8 +218,8 @@ class LLFFDataset(Dataset):
         # See https://github.com/bmild/nerf/issues/34
         # import pdb; pdb.set_trace()
 
-        # near_original = self.bounds.min()
-        near_original = self.poses[...,3].min()
+        near_original = self.bounds.min()
+        # near_original = self.poses[...,3].min()
         scale_factor = near_original*0.75 # 0.75 is the default parameter
                                           # the nearest depth self.bounds.min() is at 1/0.75=1.33
         # scale_factor = near_original*1.5

@@ -52,7 +52,10 @@ jobs:
   command:
   - bash env.sh  
   - python train.py --load_json configs/config_silica.json --num_gpus 8
-# - name: vasedeck-G8-aml-bsx4
+  submit_args:
+    container_args:
+        shm_size: 64g
+# - name: gundam2-G8-aml-bsx4
 #   sku: G8
 #   command:
 #   - bash env.sh  

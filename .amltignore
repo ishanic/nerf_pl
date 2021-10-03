@@ -7,4 +7,8 @@ extract_color_mesh.py
 *.dae
 *.ply
 *.ckpt
+results/
+*.jpg
+*.jpg
+None/
 
