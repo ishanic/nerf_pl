@@ -14,6 +14,7 @@ import metrics
 
 from datasets import dataset_dict
 from datasets.depth_utils import *
+import pdb
 
 torch.backends.cudnn.benchmark = True
 
@@ -42,6 +43,10 @@ def get_opts():
                         help='use disparity depth sampling')
     parser.add_argument('--chunk', type=int, default=32*1024*4,
                         help='chunk size to split the input to avoid OOM')
+    parser.add_argument('--radius_scale', type=float, default=1.1,
+                        help='the scaling radius on boundsmin during eval')
+    parser.add_argument('--scale_factor', type=float, default=0.75,
+                        help='the scaling factor on boundsmin during eval')
 
     parser.add_argument('--ckpt_path', type=str, required=True,
                         help='pretrained checkpoint path to load')
@@ -92,7 +97,8 @@ if __name__ == "__main__":
 
     kwargs = {'root_dir': args.root_dir,
               'split': args.split,
-              'img_wh': tuple(args.img_wh)}
+              'img_wh': tuple(args.img_wh),
+              'radius_scale': args.radius_scale}
     if args.dataset_name == 'llff':
         kwargs['spheric_poses'] = args.spheric_poses
     dataset = dataset_dict[args.dataset_name](**kwargs)
@@ -127,8 +133,10 @@ if __name__ == "__main__":
         if args.save_depth:
             depth_pred = results['depth_fine'].view(h, w).cpu().numpy()
             depth_pred = np.nan_to_num(depth_pred)
+            # pdb.set_trace()
             if args.depth_format == 'pfm':
                 save_pfm(os.path.join(dir_name, f'depth_{i:03d}.pfm'), depth_pred)
+                # img = cv2.imread('img.pfm',-1) - imageio.imread gives incorrect outputs
             else:
                 with open(f'depth_{i:03d}', 'wb') as f:
                     f.write(depth_pred.tobytes())

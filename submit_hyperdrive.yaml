@@ -2,15 +2,15 @@ description: video-mesh-training
 
 target:
   # service: amlk8s
-  # # name: itpeastusv100cl2
-  # # name: itpeastusv100cl
-  # # name: itpeusp100cl
-  # # v100x8-redmond
+  # name: itpeastusv100cl2
+  # name: itpeastusv100cl
+  # name: itpeusp100cl
+  # v100x8-redmond
   # name: itplabrr1cl1
   # vc: resrchvc
 
   service: aml
-  name: v100x8
+  name: v100x4
 
 environment:
   # https://phillytools.azurewebsites.net/master/advanced/5_customizing_dockers.html
@@ -46,7 +46,7 @@ storage:
     container_name: instances
     # container_name: objectron
 
-jobs:
+# jobs:
 # - name: silica-G8-aml
 #   sku: G8
 #   command:
@@ -55,14 +55,14 @@ jobs:
 #   submit_args:
 #     container_args:
 #         shm_size: 64g
-- name: gundamgray-G4-amlk8s-bsx4
-  sku: G8
-  command:
-  - bash env.sh  
-  - python train.py --load_json configs/config_real.json --num_gpus 8 --N_importance 128 --lr 5e-4 --warmup_epochs 1
-  submit_args:
-    container_args:
-        shm_size: 64g
+# - name: scarecrow-G4-amlk8s-bsx4
+#   sku: G4
+#   command:
+#   - bash env.sh  
+#   - python train.py --load_json configs/config_real.json --num_gpus 4
+#   submit_args:
+#     container_args:
+#         shm_size: 64g
 # - name: plant-G8-aml-bsx4
 #   sku: G8
 #   command:
@@ -71,3 +71,24 @@ jobs:
 #   submit_args:
 #     container_args:
 #         shm_size: 64g
+
+search:
+  job_template:
+    name: HPsearch_{experiment_name:s}_{N_importance}_{batch_size}_{lr}_{warmup_epochs}
+    sku: G4
+    command:
+    - bash env.sh  
+    - python train.py --load_json configs/config_real.json --num_gpus 4 --N_importance {N_importance} --batch_size {batch_size}
+  max_trials: 4
+  parallel_trials: 2
+  max_duration_hours: 72 # optional, duration in hours of the hyperdrive experiment. Defaults to 336 (ie 2 weeks). Max of 1440 (ie 60 days)
+  metrics: # optimization objective. Required for bayesian sampling and early_termination, ignored otherwise
+    - name: val_pnsr
+      goal: maximize
+  sampling: grid # how to explore the hyperparameter space: random, grid or bayesian. Default: bayesian
+  # early_termination: BanditPolicy(slack_factor=0.15, evaluation_interval=1, delay_evaluation=10) # optional. Not supported with bayesian sampling
+  params:
+    - name: N_importance
+      values: choice(64,128)
+    - name: batch_size
+      values: choice(1024,4096)

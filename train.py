@@ -22,9 +22,11 @@ from metrics import *
 # pytorch-lightning
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning import LightningModule, Trainer
-from pytorch_lightning.logging import TestTubeLogger
+# from pytorch_lightning.logging import TestTubeLogger
+from pytorch_lightning import loggers as pl_loggers
 
 import json
+import pdb
 
 class NeRFSystem(LightningModule):
     def __init__(self, hparams):
@@ -124,24 +126,32 @@ class NeRFSystem(LightningModule):
                 'log': log
                }
 
+    def training_epoch_end(self, outputs):
+        #  the function is called after every epoch is completed
+        avg_loss = torch.stack([x['loss'] for x in outputs]).mean()
+        self.logger.experiment.add_scalar("Loss/Train",
+                                            avg_loss,
+                                            self.current_epoch)
+        return{'loss': avg_loss}
+
+
     def validation_step(self, batch, batch_nb):
         rays, rgbs = self.decode_batch(batch)
         rays = rays.squeeze() # (H*W, 3)
         rgbs = rgbs.squeeze() # (H*W, 3)
         results = self(rays)
-        log = {'val_loss': self.loss(results, rgbs)}
         typ = 'fine' if 'rgb_fine' in results else 'coarse'
-    
-        # if batch_nb == 0:
-        #     W, H = self.hparams.img_wh
-        #     img = results[f'rgb_{typ}'].view(H, W, 3).cpu()
-        #     img = img.permute(2, 0, 1) # (3, H, W)
-        #     img_gt = rgbs.view(H, W, 3).permute(2, 0, 1).cpu() # (3, H, W)
-        #     depth = visualize_depth(results[f'depth_{typ}'].view(H, W)) # (3, H, W)
-        #     stack = torch.stack([img_gt, img, depth]) # (3, 3, H, W)
-        #     self.logger.experiment.add_images('val/GT_pred_depth', stack, self.global_step)
-
+        log = {'val_loss': self.loss(results, rgbs), 'val_psnr': psnr(results[f'rgb_{typ}'], rgbs)}
         log['val_psnr'] = psnr(results[f'rgb_{typ}'], rgbs)
+        W, H = self.hparams.img_wh
+        typ = 'fine' if 'rgb_fine' in results else 'coarse'
+        img = results[f'rgb_{typ}'].view(H, W, 3).cpu()
+        img = img.permute(2, 0, 1) # (3, H, W)
+        img_gt = rgbs.view(H, W, 3).permute(2, 0, 1).cpu() # (3, H, W)
+        depth = visualize_depth(results[f'depth_{typ}'].view(H, W)) # (3, H, W)
+        stack = torch.stack([img_gt, img, depth.repeat(3,1,1)]) # (3, 3, H, W)
+        self.logger.experiment.add_images('val/GT_pred_depth', stack, self.global_step)
+
         return log
 
     def validation_epoch_end(self, outputs):
@@ -166,12 +176,14 @@ if __name__ == '__main__':
                                           mode='min',
                                           save_top_k=5,)
 
-    logger = TestTubeLogger(
-        save_dir="logs",
-        name=hparams.exp_name,
-        debug=False,
-        create_git_tag=False
-    )
+    logger = pl_loggers.TensorBoardLogger(f'{hparams.tb_path}', name=hparams.exp_name)
+    
+    # logger = TestTubeLogger(
+    #     save_dir="logs",
+    #     name=hparams.exp_name,
+    #     debug=False,
+    #     create_git_tag=False
+    # )
 
     trainer = Trainer(max_epochs=hparams.num_epochs,
                       checkpoint_callback=checkpoint_callback,
@@ -179,10 +191,10 @@ if __name__ == '__main__':
                       logger=logger,
                       early_stop_callback=None,
                       weights_summary=None,
-                      progress_bar_refresh_rate=1,
+                      progress_bar_refresh_rate=hparams.tqdm_rate, #disable tqdm otherwise 1  
                       gpus=hparams.num_gpus,
                       distributed_backend='ddp' if hparams.num_gpus>1 else None,
-                      num_sanity_val_steps=1, #changed to 0 from 1
+                      num_sanity_val_steps=0, #changed to 0 from 1
                       benchmark=True,
                       profiler=hparams.num_gpus==1)
 

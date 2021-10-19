@@ -31,7 +31,7 @@ def get_opts():
                         help='factor to perturb depth sampling points')
     parser.add_argument('--noise_std', type=float, default=1.0,
                         help='std dev of noise added to regularize sigma')
-        
+
     parser.add_argument('--loss_type', type=str, default='mse',
                         choices=['mse'],
                         help='loss to use')
@@ -49,6 +49,10 @@ def get_opts():
                         help='pretrained checkpoint path to load')
     parser.add_argument('--save_ckpt_path', type=str, default=None,
                         help='pretrained checkpoint path to load')
+    parser.add_argument('--tb_path', type=str, default=None,
+                        help='save all tensorboard metadata')
+    parser.add_argument('--tqdm_rate', type=int, default=1,
+                        help='show tqdm')
     parser.add_argument('--prefixes_to_ignore', nargs='+', type=str, default=['loss'],
                         help='the prefixes to ignore in the checkpoint state dict')
 

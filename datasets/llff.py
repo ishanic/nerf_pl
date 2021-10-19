@@ -8,7 +8,7 @@ from torchvision import transforms as T
 
 from .ray_utils import *
 # from ray_utils import *
-
+import pdb
 # use tips mentioned here for arbitrary datasets:
 # https://github.com/kwea123/nerf_pl/issues/50
 
@@ -160,7 +160,7 @@ def create_spheric_poses(radius, n_poses=120):
 
 
 class LLFFDataset(Dataset):
-    def __init__(self, root_dir, split='train', img_wh=(504, 378), spheric_poses=False, val_num=1):
+    def __init__(self, root_dir, split='train', img_wh=(504, 378), spheric_poses=False, val_num=1, radius_scale=1.1, scale_factor=0.75):
         """
         spheric_poses: whether the images are taken in a spheric inward-facing manner
                        default: False (forward-facing)
@@ -171,6 +171,8 @@ class LLFFDataset(Dataset):
         self.img_wh = img_wh
         self.spheric_poses = spheric_poses
         self.val_num = max(1, val_num) # at least 1
+        self.radius_scale = radius_scale
+        self.scale_factor = scale_factor
         self.define_transforms()
 
         self.read_meta()
@@ -182,11 +184,13 @@ class LLFFDataset(Dataset):
         self.image_paths = sorted(glob.glob(os.path.join(self.root_dir, 'images/*')))
                         # load full resolution image then resize
         
+        if os.path.exists(os.path.join(self.root_dir,'missing_idx.npy')):
+            missing_idx = np.load(os.path.join(self.root_dir,'missing_idx.npy'))
+            self.image_paths = np.delete(self.image_paths, missing_idx, axis=0)
         if self.split in ['train', 'val']:
             assert len(poses_bounds) == len(self.image_paths), \
                 'Mismatch between number of images and number of poses! Please rerun COLMAP!'
-
-        
+       
 
         poses = poses_bounds[:, :15].reshape(-1, 3, 5) # (N_images, 3, 5)
         self.bounds = poses_bounds[:, -2:] # (N_images, 2)
@@ -220,7 +224,7 @@ class LLFFDataset(Dataset):
 
         near_original = self.bounds.min()
         # near_original = self.poses[...,3].min()
-        scale_factor = near_original*0.75 # 0.75 is the default parameter
+        scale_factor = near_original*self.scale_factor # 0.75 is the default parameter
                                           # the nearest depth self.bounds.min() is at 1/0.75=1.33
         # scale_factor = near_original*1.5
         # scale_factor = near_original*(1/1.25)
@@ -291,7 +295,8 @@ class LLFFDataset(Dataset):
                 radii = np.percentile(np.abs(self.poses[..., 3]), 90, axis=0)
                 self.poses_test = create_spiral_poses(radii, focus_depth)
             else:
-                radius = 1.1 * self.bounds.min()
+                # self.radius_scale = 1.1
+                radius = self.radius_scale * self.bounds.min()
                 self.poses_test = create_spheric_poses(radius)
 
     def define_transforms(self):
