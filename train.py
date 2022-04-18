@@ -35,11 +35,10 @@ class NeRFSystem(LightningModule):
 
         self.loss = loss_dict[hparams.loss_type]()
 
-        self.embedding_xyz = Embedding(3, 10) # 10 is the default number
-        self.embedding_dir = Embedding(3, 4) # 4 is the default number
+        self.embedding_xyz = Embedding(3, hparams.xyz_encoding_dim) # 10 is the default number
+        self.embedding_dir = Embedding(3, hparams.dir_encoding_dim) # 4 is the default number
         self.embeddings = [self.embedding_xyz, self.embedding_dir]
-
-        self.nerf_coarse = NeRF()
+        self.nerf_coarse = NeRF(in_channels_xyz=hparams.xyz_encoding_dim*3*2+3, in_channels_dir=hparams.dir_encoding_dim*3*2+3)
         self.models = [self.nerf_coarse]
         if hparams.N_importance > 0:
             self.nerf_fine = NeRF()
@@ -85,6 +84,7 @@ class NeRFSystem(LightningModule):
         if self.hparams.dataset_name == 'llff':
             kwargs['spheric_poses'] = self.hparams.spheric_poses
             kwargs['val_num'] = self.hparams.num_gpus
+            kwargs['white_back'] = self.hparams.white_back
         self.train_dataset = dataset(split='train', **kwargs)
         self.val_dataset = dataset(split='val', **kwargs)
 
@@ -168,8 +168,6 @@ class NeRFSystem(LightningModule):
 if __name__ == '__main__':
     hparams = get_opts()
     system = NeRFSystem(hparams)
-    # checkpoint_callback = ModelCheckpoint(filepath=os.path.join(f'ckpts/{hparams.exp_name}',
-                                                                # '{epoch:d}'),
     checkpoint_callback = ModelCheckpoint(filepath=os.path.join(f'{hparams.save_ckpt_path}/{hparams.exp_name}',
                                                                 '{epoch:d}'),
                                           monitor='val/loss',
@@ -178,13 +176,6 @@ if __name__ == '__main__':
 
     logger = pl_loggers.TensorBoardLogger(f'{hparams.tb_path}', name=hparams.exp_name)
     
-    # logger = TestTubeLogger(
-    #     save_dir="logs",
-    #     name=hparams.exp_name,
-    #     debug=False,
-    #     create_git_tag=False
-    # )
-
     trainer = Trainer(max_epochs=hparams.num_epochs,
                       checkpoint_callback=checkpoint_callback,
                       resume_from_checkpoint=hparams.ckpt_path,

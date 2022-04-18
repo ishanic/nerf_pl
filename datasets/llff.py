@@ -160,7 +160,7 @@ def create_spheric_poses(radius, n_poses=120):
 
 
 class LLFFDataset(Dataset):
-    def __init__(self, root_dir, split='train', img_wh=(504, 378), spheric_poses=False, val_num=1, radius_scale=1.1, scale_factor=0.75):
+    def __init__(self, root_dir, split='train', img_wh=(504, 378), spheric_poses=False, val_num=1, radius_scale=1.1, scale_factor=0.75, white_back=True):
         """
         spheric_poses: whether the images are taken in a spheric inward-facing manner
                        default: False (forward-facing)
@@ -176,7 +176,7 @@ class LLFFDataset(Dataset):
         self.define_transforms()
 
         self.read_meta()
-        self.white_back = False
+        self.white_back = white_back
 
     def read_meta(self):
         poses_bounds = np.load(os.path.join(self.root_dir,

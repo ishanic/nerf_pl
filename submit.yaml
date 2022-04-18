@@ -30,6 +30,7 @@ environment:
     - pip install pyglet --user
     - pip install plyfile --user
     - pip install open3d --user
+    - pip install azureml-defaults
 
 code:
   # local directory of the code. this will be uploaded to the server.
@@ -55,11 +56,17 @@ jobs:
 #   submit_args:
 #     container_args:
 #         shm_size: 64g
-- name: gundamgray-G4-amlk8s-bsx4
+- name: officechair-bsx4-warmup0
   sku: G8
   command:
   - bash env.sh  
-  - python train.py --load_json configs/config_real.json --num_gpus 8 --N_importance 128 --lr 5e-4 --warmup_epochs 1
+  - python train.py 
+    --load_json configs/config_real.json 
+    --num_gpus 8 
+    --lr 5e-4 
+    --warmup_epochs 0 
+    --tb_path $$AMLT_OUTPUT_DIR
+
   submit_args:
     container_args:
         shm_size: 64g

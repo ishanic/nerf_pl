@@ -18,8 +18,10 @@ def get_opts():
                         help='resolution (img_w, img_h) of the image')
     parser.add_argument('--spheric_poses', default=True, action="store_true",
                         help='whether images are taken in spheric poses (for llff)')
+    parser.add_argument('--white_back', default=False, action="store_true",
+                        help='whether images are taken with white background')
 
-    parser.add_argument('--N_samples', type=int, default=128,
+    parser.add_argument('--N_samples', type=int, default=64, #from jaxnerf else 128
                         help='number of coarse samples')
     parser.add_argument('--N_importance', type=int, default=128,
                         help='number of additional fine samples')
@@ -31,6 +33,10 @@ def get_opts():
                         help='factor to perturb depth sampling points')
     parser.add_argument('--noise_std', type=float, default=1.0,
                         help='std dev of noise added to regularize sigma')
+    parser.add_argument('--xyz_encoding_dim', type=float, default=10,
+                        help='dims of frequency encoding for xyz')
+    parser.add_argument('--dir_encoding_dim', type=float, default=4,
+                        help='dims of frequency encoding for viewdir')
 
     parser.add_argument('--loss_type', type=str, default='mse',
                         choices=['mse'],

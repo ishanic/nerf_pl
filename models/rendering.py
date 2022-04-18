@@ -131,7 +131,7 @@ def render_rays(models,
             else:
                 xyzdir_embedded = xyz_embedded
             out_chunks += [model(xyzdir_embedded, sigma_only=weights_only)]
-
+        
         out = torch.cat(out_chunks, 0)
         if weights_only:
             sigmas = out.view(N_rays, N_samples_)
@@ -165,7 +165,6 @@ def render_rays(models,
         # compute final weighted outputs
         rgb_final = torch.sum(weights.unsqueeze(-1)*rgbs, -2) # (N_rays, 3)
         depth_final = torch.sum(weights*z_vals, -1) # (N_rays)
-
         if white_back:
             rgb_final = rgb_final + 1-weights_sum.unsqueeze(-1)
 
@@ -184,7 +183,7 @@ def render_rays(models,
 
     # Embed direction
     dir_embedded = embedding_dir(rays_d) # (N_rays, embed_dir_channels)
-
+    # import pdb; pdb.set_trace()
     # Sample depth points
     z_steps = torch.linspace(0, 1, N_samples, device=rays.device) # (N_samples)
     if not use_disp: # use linear sampling in depth space

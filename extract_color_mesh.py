@@ -9,7 +9,7 @@ import mcubes
 import open3d as o3d
 from plyfile import PlyData, PlyElement
 from argparse import ArgumentParser
-
+import pdb
 from models.rendering import *
 from models.nerf import *
 
@@ -61,6 +61,12 @@ def get_opts():
     parser.add_argument('--near_t', type=float, default=1.0,
                         help='the near bound factor to start the ray')
 
+
+    parser.add_argument('--xyz_encoding_dim', type=int, default=10,
+                        help='')
+    parser.add_argument('--dir_encoding_dim', type=int, default=4,
+                        help='')
+
     return parser.parse_args()
 
 
@@ -103,10 +109,10 @@ if __name__ == "__main__":
         kwargs['split'] = 'train'
     dataset = dataset_dict[args.dataset_name](**kwargs)
 
-    embedding_xyz = Embedding(3, 10)
-    embedding_dir = Embedding(3, 4)
+    embedding_xyz = Embedding(3, args.xyz_encoding_dim)
+    embedding_dir = Embedding(3, args.dir_encoding_dim)
     embeddings = [embedding_xyz, embedding_dir]
-    nerf_fine = NeRF()
+    nerf_fine = NeRF(in_channels_xyz=args.xyz_encoding_dim*3*2+3, in_channels_dir=args.dir_encoding_dim*3*2+3)
     load_ckpt(nerf_fine, args.ckpt_path, model_name='nerf_fine')
     nerf_fine.cuda().eval()
 
@@ -157,18 +163,18 @@ if __name__ == "__main__":
     face = np.empty(len(triangles), dtype=[('vertex_indices', 'i4', (3,))])
     face['vertex_indices'] = triangles
 
-    PlyData([PlyElement.describe(vertices_[:, 0], 'vertex'), 
-             PlyElement.describe(face, 'face')]).write(f'{args.scene_name}.ply')
-
+    # PlyData([PlyElement.describe(vertices_[:, 0], 'vertex'), 
+    #          PlyElement.describe(face, 'face')]).write(f'{args.scene_name}.ply')
+    # pdb.set_trace()
     # remove noise in the mesh by keeping only the biggest cluster
-    print('Removing noise ...')
+    # print('Removing noise ...')
     mesh = o3d.io.read_triangle_mesh(f"{args.scene_name}.ply")
-    idxs, count, _ = mesh.cluster_connected_triangles()
-    max_cluster_idx = np.argmax(count)
-    triangles_to_remove = [i for i in range(len(face)) if idxs[i] != max_cluster_idx]
-    mesh.remove_triangles_by_index(triangles_to_remove)
-    mesh.remove_unreferenced_vertices()
-    print(f'Mesh has {len(mesh.vertices)/1e6:.2f} M vertices and {len(mesh.triangles)/1e6:.2f} M faces.')
+    # idxs, count, _ = mesh.cluster_connected_triangles()
+    # max_cluster_idx = np.argmax(count)
+    # triangles_to_remove = [i for i in range(len(face)) if idxs[i] != max_cluster_idx]
+    # mesh.remove_triangles_by_index(triangles_to_remove)
+    # mesh.remove_unreferenced_vertices()
+    # print(f'Mesh has {len(mesh.vertices)/1e6:.2f} M vertices and {len(mesh.triangles)/1e6:.2f} M faces.')
 
     vertices_ = np.asarray(mesh.vertices).astype(np.float32)
     triangles = np.asarray(mesh.triangles)

@@ -42,6 +42,7 @@ class NeRF(nn.Module):
     def __init__(self,
                  D=8, W=256,
                  in_channels_xyz=63, in_channels_dir=27, 
+                 # in_channels_xyz=123, in_channels_dir=51, 
                  skips=[4]):
         """
         D: number of layers for density (sigma) encoder
@@ -79,7 +80,7 @@ class NeRF(nn.Module):
         self.rgb = nn.Sequential(
                         nn.Linear(W//2, 3),
                         nn.Sigmoid())
-
+        
     def forward(self, x, sigma_only=False):
         """
         Encodes input (xyz+dir) to rgb+sigma (not ready to render yet).
