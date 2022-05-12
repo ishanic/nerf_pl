@@ -99,3 +99,32 @@ def get_ndc_rays(H, W, focal, near, rays_o, rays_d):
     rays_d = torch.stack([d0, d1, d2], -1) # (B, 3)
     
     return rays_o, rays_d
+
+def get_rays_shapenet(hwf, poses):
+    """
+    shapenet camera intrinsics are defined by H, W and focal.
+    this function can handle multiple camera poses at a time.
+    Args:
+        hwf (3,): H, W, focal
+        poses (N, 4, 4): pose for N number of images
+        
+    Returns:
+        rays_o (N, H, W, 3): ray origins
+        rays_d (N, H, W, 3): ray directions
+    """
+    if poses.ndim == 2:
+        poses = poses.unsqueeze(dim=0)  # if poses has shape (4, 4)
+                                        # make it (1, 4, 4)
+
+    H, W, focal = hwf
+    yy, xx = torch.meshgrid(torch.arange(0., H, device=focal.device),
+                            torch.arange(0., W, device=focal.device))
+    direction = torch.stack([(xx-0.5*W)/focal, -(yy-0.5*H)/focal, -torch.ones_like(xx)], dim=-1) # (H, W, 3)
+                                        
+    rays_d = torch.einsum("hwc, nrc -> nhwr", direction, poses[:, :3, :3]) # (N, H, W, 3)
+    rays_d = rays_d / torch.norm(rays_d, dim=-1, keepdim=True)
+    
+    rays_o = poses[:, :3, -1] # (N, 3)
+    rays_o = rays_o[:, None, None, :].expand_as(rays_d) # (N, H, W, 3)
+    return rays_o, rays_d
+    

@@ -12,7 +12,7 @@ def get_opts():
                         default='/home/ubuntu/data/nerf_example_data/nerf_synthetic/lego',
                         help='root directory of dataset')
     parser.add_argument('--dataset_name', type=str, default='blender',
-                        choices=['blender', 'llff'],
+                        choices=['blender', 'llff', 'shapenet'],
                         help='which dataset to train/val')
     parser.add_argument('--img_wh', nargs="+", type=int, default=[800, 800],
                         help='resolution (img_w, img_h) of the image')
@@ -50,6 +50,8 @@ def get_opts():
                         help='number of training epochs')
     parser.add_argument('--num_gpus', type=int, default=1,
                         help='number of gpus')
+    parser.add_argument('--num_workers', type=int, default=4,
+                        help='number of workers for train/val loader')
 
     parser.add_argument('--ckpt_path', type=str, default=None,
                         help='pretrained checkpoint path to load')

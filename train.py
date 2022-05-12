@@ -32,7 +32,7 @@ class NeRFSystem(LightningModule):
     def __init__(self, hparams):
         super(NeRFSystem, self).__init__()
         self.hparams = hparams
-
+        self.num_workers = hparams.num_workers
         self.loss = loss_dict[hparams.loss_type]()
 
         self.embedding_xyz = Embedding(3, hparams.xyz_encoding_dim) # 10 is the default number
@@ -79,12 +79,13 @@ class NeRFSystem(LightningModule):
 
     def prepare_data(self):
         dataset = dataset_dict[self.hparams.dataset_name]
-        kwargs = {'root_dir': self.hparams.root_dir,
-                  'img_wh': tuple(self.hparams.img_wh)}
+        kwargs = {'root_dir': self.hparams.root_dir}
         if self.hparams.dataset_name == 'llff':
+            kwargs['img_wh'] = tuple(self.hparams.img_wh)
             kwargs['spheric_poses'] = self.hparams.spheric_poses
             kwargs['val_num'] = self.hparams.num_gpus
             kwargs['white_back'] = self.hparams.white_back
+
         self.train_dataset = dataset(split='train', **kwargs)
         self.val_dataset = dataset(split='val', **kwargs)
 
@@ -97,23 +98,24 @@ class NeRFSystem(LightningModule):
     def train_dataloader(self):
         return DataLoader(self.train_dataset,
                           shuffle=True,
-                          num_workers=4,
+                          num_workers=self.num_workers,
                           batch_size=self.hparams.batch_size,
                           pin_memory=True)
 
     def val_dataloader(self):
         return DataLoader(self.val_dataset,
                           shuffle=False,
-                          num_workers=4,
+                          num_workers=self.num_workers,
                           batch_size=1, # validate one image (H*W rays) at a time
                           pin_memory=True)
     
     def training_step(self, batch, batch_nb):
+        
         log = {'lr': get_learning_rate(self.optimizer)}
         rays, rgbs = self.decode_batch(batch)
+        # print(rays.shape, rgbs.shape)
         results = self(rays)
         # rgb, depth, opacity -> coarse and fine
-        # import pdb; pdb.set_trace()
         log['train/loss'] = loss = self.loss(results, rgbs)
         typ = 'fine' if 'rgb_fine' in results else 'coarse'
 
