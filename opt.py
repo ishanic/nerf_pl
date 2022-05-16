@@ -11,6 +11,13 @@ def get_opts():
     parser.add_argument('--root_dir', type=str,
                         default='/home/ubuntu/data/nerf_example_data/nerf_synthetic/lego',
                         help='root directory of dataset')
+    parser.add_argument('--pose', type=str, default='colmap',
+                        choices=['colmap', 'HeT', 'randomerror'],
+                        help='relative directory to poses')
+    parser.add_argument('--pose_type', type=str, default='extrinsics',
+                        choices=['extrinsics', 'intrinsics'],)
+    parser.add_argument('--percent_of_error', type=float, default=0,)
+
     parser.add_argument('--dataset_name', type=str, default='blender',
                         choices=['blender', 'llff'],
                         help='which dataset to train/val')
@@ -46,7 +53,7 @@ def get_opts():
                         help='batch size')
     parser.add_argument('--chunk', type=int, default=32*1024,
                         help='chunk size to split the input to avoid OOM')
-    parser.add_argument('--num_epochs', type=int, default=16,
+    parser.add_argument('--num_epochs', type=int, default=5,
                         help='number of training epochs')
     parser.add_argument('--num_gpus', type=int, default=1,
                         help='number of gpus')

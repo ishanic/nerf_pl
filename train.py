@@ -1,6 +1,7 @@
 import os, sys
 from opt import get_opts
 import torch
+torch.manual_seed(0)
 from collections import defaultdict
 
 from torch.utils.data import DataLoader
@@ -85,6 +86,9 @@ class NeRFSystem(LightningModule):
             kwargs['spheric_poses'] = self.hparams.spheric_poses
             kwargs['val_num'] = self.hparams.num_gpus
             kwargs['white_back'] = self.hparams.white_back
+            kwargs['pose_dir'] = self.hparams.pose+'_poses'
+            kwargs['pose_type'] = self.hparams.pose_type
+            kwargs['percent_of_error'] = self.hparams.percent_of_error
         self.train_dataset = dataset(split='train', **kwargs)
         self.val_dataset = dataset(split='val', **kwargs)
 

@@ -1,17 +1,20 @@
 {
     "exp": "nerf-real-360",
     "dataset_name": "llff",
-    "root_dir": "/mnt/external/officechair",
-    "save_ckpt_path": "/mnt/external/officechair",
+    "root_dir": "/mnt/external/2022-05-10-170953",
+    "save_ckpt_path": "/mnt/external/2022-05-10-170953",
     "tqdm_rate": 0,
     "N_importance": 128,
-    "xyz_encoding_dim": 20,
-    "dir_encoding_dim": 8,
-    "img_wh": [3024,4032],
-    "num_epochs": 20,
+    "xyz_encoding_dim": 10,
+    "dir_encoding_dim": 4,
+    "img_wh": [760,428],
+    "num_epochs": 5,
     "batch_size": 4096,
     "optimizer": "adam",
     "lr": 5e-4,
     "lr_scheduler": "cosine",
-    "exp_name": "bsx4"
+    "exp_name": "chair",
+    "pose": "HeT",
+    "pose_type": "extrinsics", 
+    "percent_of_error": 10
 }

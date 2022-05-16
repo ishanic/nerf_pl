@@ -1,8 +1,8 @@
 {
-    "exp": "nerf-real-360",
-    "dataset_name": "llff",
-    "root_dir": "/mnt/external/chair_train",
-    "save_ckpt_path": "/mnt/external/chair_train",
+    "exp": "nerf-synthetic-360",
+    "dataset_name": "blender",
+    "root_dir": "/mnt/external/nerf_synthetic/chair",
+    "save_ckpt_path": "/mnt/external/nerf_synthetic/chair",
     "white_back": 1,
     "tqdm_rate": 0,
     "N_importance": 128,
@@ -12,5 +12,5 @@
     "optimizer": "adam",
     "lr": 5e-4,
     "lr_scheduler": "cosine",
-    "exp_name": "bsx4"
+    "exp_name": "nerf-chair"
 }

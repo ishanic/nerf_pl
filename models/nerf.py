@@ -1,4 +1,5 @@
 import torch
+torch.manual_seed(0)
 from torch import nn
 
 class Embedding(nn.Module):

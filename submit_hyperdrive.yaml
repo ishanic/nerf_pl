@@ -10,7 +10,7 @@ target:
   # vc: resrchvc
 
   service: aml
-  name: v100x4
+  name: v100x1
 
 environment:
   # https://phillytools.azurewebsites.net/master/advanced/5_customizing_dockers.html
@@ -30,6 +30,7 @@ environment:
     - pip install pyglet --user
     - pip install plyfile --user
     - pip install open3d --user
+    - pip install azureml-defaults    
 
 code:
   # local directory of the code. this will be uploaded to the server.
@@ -74,13 +75,21 @@ storage:
 
 search:
   job_template:
-    name: HPsearch_{experiment_name:s}_{N_importance}_{batch_size}_{lr}_{warmup_epochs}
-    sku: G4
+    name: 2022-05-10-170953_{experiment_name:s}_{pose}_{pose_type}_{percent_of_error}
+    sku: G1
     command:
     - bash env.sh  
-    - python train.py --load_json configs/config_real.json --num_gpus 4 --N_importance {N_importance} --batch_size {batch_size}
-  max_trials: 4
-  parallel_trials: 2
+    - python train.py 
+      --load_json configs/config_real.json 
+      --num_gpus 1
+      --lr 5e-4 
+      --warmup_epochs 1 
+      --tb_path $$AMLT_OUTPUT_DIR
+      --pose {pose} 
+      --pose_type {pose_type} 
+      --percent_of_error {percent_of_error}
+  max_trials: 16
+  parallel_trials: 16
   max_duration_hours: 72 # optional, duration in hours of the hyperdrive experiment. Defaults to 336 (ie 2 weeks). Max of 1440 (ie 60 days)
   metrics: # optimization objective. Required for bayesian sampling and early_termination, ignored otherwise
     - name: val_pnsr
@@ -88,7 +97,9 @@ search:
   sampling: grid # how to explore the hyperparameter space: random, grid or bayesian. Default: bayesian
   # early_termination: BanditPolicy(slack_factor=0.15, evaluation_interval=1, delay_evaluation=10) # optional. Not supported with bayesian sampling
   params:
-    - name: N_importance
-      values: choice(64,128)
-    - name: batch_size
-      values: choice(1024,4096)
+    - name: pose
+      values: choice('colmap','HeT')
+    - name: pose_type
+      values: choice('extrinsics',)
+    - name: percent_of_error
+      values: choice(0,5,10)

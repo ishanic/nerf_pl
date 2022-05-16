@@ -2,10 +2,10 @@ description: video-mesh-training
 
 target:
   # service: amlk8s
-  # # name: itpeastusv100cl2
-  # # name: itpeastusv100cl
-  # # name: itpeusp100cl
-  # # v100x8-redmond
+  # name: itpeastusv100cl2
+  # name: itpeastusv100cl
+  # name: itpeusp100cl
+  # v100x8-redmond
   # name: itplabrr1cl1
   # vc: resrchvc
 
@@ -30,7 +30,7 @@ environment:
     - pip install pyglet --user
     - pip install plyfile --user
     - pip install open3d --user
-    - pip install azureml-defaults
+    - pip install azureml-defaults    
 
 code:
   # local directory of the code. this will be uploaded to the server.
@@ -47,7 +47,7 @@ storage:
     container_name: instances
     # container_name: objectron
 
-jobs:
+# jobs:
 # - name: silica-G8-aml
 #   sku: G8
 #   command:
@@ -56,20 +56,14 @@ jobs:
 #   submit_args:
 #     container_args:
 #         shm_size: 64g
-- name: chair
-  sku: G1
-  command:
-  - bash env.sh  
-  - python train.py 
-    --load_json configs/config_real.json 
-    --num_gpus 1
-    --lr 5e-4 
-    --warmup_epochs 1 
-    --tb_path $$AMLT_OUTPUT_DIR
-
-  submit_args:
-    container_args:
-        shm_size: 64g
+# - name: scarecrow-G4-amlk8s-bsx4
+#   sku: G4
+#   command:
+#   - bash env.sh  
+#   - python train.py --load_json configs/config_real.json --num_gpus 4
+#   submit_args:
+#     container_args:
+#         shm_size: 64g
 # - name: plant-G8-aml-bsx4
 #   sku: G8
 #   command:
@@ -78,3 +72,30 @@ jobs:
 #   submit_args:
 #     container_args:
 #         shm_size: 64g
+
+search:
+  job_template:
+    name: nerf_synthetic_{instance}
+    sku: G1
+    command:
+    - bash env.sh  
+    - python train.py 
+      --load_json configs/config_synthetic.json 
+      --num_gpus 1
+      --lr 5e-4 
+      --warmup_epochs 1 
+      --tb_path $$AMLT_OUTPUT_DIR
+      --root_dir /mnt/external/nerf_synthetic/{instance}
+      --save_ckpt_path /mnt/external/nerf_synthetic/{instance}
+      --exp_name {instance}
+  max_trials: 16
+  parallel_trials: 16
+  max_duration_hours: 72 # optional, duration in hours of the hyperdrive experiment. Defaults to 336 (ie 2 weeks). Max of 1440 (ie 60 days)
+  metrics: # optimization objective. Required for bayesian sampling and early_termination, ignored otherwise
+    - name: val_pnsr
+      goal: maximize
+  sampling: grid # how to explore the hyperparameter space: random, grid or bayesian. Default: bayesian
+  # early_termination: BanditPolicy(slack_factor=0.15, evaluation_interval=1, delay_evaluation=10) # optional. Not supported with bayesian sampling
+  params:
+    - name: instance
+      values: choice('chair','drums','ficus','hotdog','lego','materials','mic','ship')

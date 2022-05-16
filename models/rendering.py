@@ -1,4 +1,5 @@
 import torch
+torch.manual_seed(0)
 from torchsearchsorted import searchsorted
 
 __all__ = ['render_rays']

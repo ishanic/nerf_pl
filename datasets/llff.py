@@ -1,4 +1,5 @@
 import torch
+torch.manual_seed(0)
 from torch.utils.data import Dataset
 import glob
 import numpy as np
@@ -160,13 +161,15 @@ def create_spheric_poses(radius, n_poses=120):
 
 
 class LLFFDataset(Dataset):
-    def __init__(self, root_dir, split='train', img_wh=(504, 378), spheric_poses=False, val_num=1, radius_scale=1.1, scale_factor=0.75, white_back=True):
+    def __init__(self, root_dir, pose_dir='colmap_poses', pose_type='extrinsics', percent_of_error=0, split='train', img_wh=(504, 378), spheric_poses=False, val_num=1, radius_scale=1.1, scale_factor=0.75, white_back=True):
         """
         spheric_poses: whether the images are taken in a spheric inward-facing manner
                        default: False (forward-facing)
         val_num: number of val images (used for multigpu training, validate same image for all gpus)
         """
+
         self.root_dir = root_dir
+        self.pose_dir = pose_dir
         self.split = split
         self.img_wh = img_wh
         self.spheric_poses = spheric_poses
@@ -175,11 +178,20 @@ class LLFFDataset(Dataset):
         self.scale_factor = scale_factor
         self.define_transforms()
 
-        self.read_meta()
         self.white_back = white_back
 
+        self.pose_type = pose_type
+        self.percent_of_error = percent_of_error
+
+        self.read_meta()
+
+
     def read_meta(self):
-        poses_bounds = np.load(os.path.join(self.root_dir,
+        if self.percent_of_error > 0:
+            poses_bounds = np.load(os.path.join(self.root_dir, self.pose_dir,
+                                            f'poses_bounds_{self.pose_type}_{self.percent_of_error}.npy')) # (N_images, 17)
+        else:            
+            poses_bounds = np.load(os.path.join(self.root_dir, self.pose_dir,
                                             'poses_bounds.npy')) # (N_images, 17)
         self.image_paths = sorted(glob.glob(os.path.join(self.root_dir, 'images/*')))
                         # load full resolution image then resize
@@ -214,8 +226,8 @@ class LLFFDataset(Dataset):
 
         # hacks for debugging
         # self.image_paths = self.image_paths[0:10]
-        # val_idx = 1
-        val_idx = np.argmin(distances_from_center) # choose val image as the closest to
+        val_idx = 25
+        # val_idx = np.argmin(distances_from_center) # choose val image as the closest to
         #                                            # center image
 
         # Step 3: correct scale so that the nearest depth is at a little more than 1.0
