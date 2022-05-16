@@ -1,0 +1,14 @@
+ckpts/
+extrinsic2pyramid/
+logs/
+*.ipynb
+extract_mesh.py
+extract_color_mesh.py
+*.dae
+*.ply
+*.ckpt
+results/
+*.jpg
+*.jpg
+None/
+
