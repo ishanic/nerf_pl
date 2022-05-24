@@ -1,0 +1,98 @@
+description: video-mesh-training
+
+target:
+  # service: amlk8s
+  # name: itpeastusv100cl2
+  # name: itpeastusv100cl
+  # name: itpeusp100cl
+  # v100x8-redmond
+  # name: itplabrr1cl1
+  # vc: resrchvc
+
+  service: aml
+  name: v100x1
+
+environment:
+  # https://phillytools.azurewebsites.net/master/advanced/5_customizing_dockers.html
+  image: pytorch/pytorch:1.4-cuda10.1-cudnn7-devel
+  # registry: docker.io # any public registry can be specified here
+  setup:
+    - pip install tensorboard --user
+    - pip install torchvision==0.5.0 --user
+    - pip install pytorch-lightning==0.7.5 --user
+    - pip install test-tube --user
+    - pip install kornia==0.2.0 --user
+    - pip install opencv-python==4.2.0.34 --user
+    - pip install matplotlib --user
+    - pip install PyMCubes --user
+    - pip install pycollada --user
+    - pip install trimesh --user
+    - pip install pyglet --user
+    - pip install plyfile --user
+    - pip install open3d --user
+    - pip install azureml-defaults    
+
+code:
+  # local directory of the code. this will be uploaded to the server.
+  # $CONFIG_DIR is expanded to the directory of this config file
+  local_dir: $CONFIG_DIR
+
+# data:
+#   data upload is not required for this example
+
+storage:
+  external:
+    storage_account_name: ischakraeastus
+    # storage_account_name: ischakraredmond
+    container_name: co3d
+    # container_name: objectron
+
+# jobs:
+# - name: silica-G8-aml
+#   sku: G8
+#   command:
+#   - bash env.sh  
+#   - python train.py --load_json configs/config_silica.json --num_gpus 8
+#   submit_args:
+#     container_args:
+#         shm_size: 64g
+# - name: scarecrow-G4-amlk8s-bsx4
+#   sku: G4
+#   command:
+#   - bash env.sh  
+#   - python train.py --load_json configs/config_real.json --num_gpus 4
+#   submit_args:
+#     container_args:
+#         shm_size: 64g
+# - name: plant-G8-aml-bsx4
+#   sku: G8
+#   command:
+#   - bash env.sh  
+#   - python train.py --load_json configs/config_real_nikon.json --num_gpus 8
+#   submit_args:
+#     container_args:
+#         shm_size: 64g
+
+search:
+  job_template:
+    name: nerf_synthetic_{instance}_aml
+    sku: G1
+    command:
+    - bash env.sh  
+    - python train.py 
+      --load_json configs/config_real.json
+      --root_dir /mnt/external/cup/{instance}
+      --save_ckpt_path /mnt/external/cup/{instance}
+      --exp_name {instance}
+      --crop_images True
+  max_trials: 16
+  parallel_trials: 16
+  max_duration_hours: 72 # optional, duration in hours of the hyperdrive experiment. Defaults to 336 (ie 2 weeks). Max of 1440 (ie 60 days)
+  metrics: # optimization objective. Required for bayesian sampling and early_termination, ignored otherwise
+    - name: val_pnsr
+      goal: maximize
+  sampling: grid # how to explore the hyperparameter space: random, grid or bayesian. Default: bayesian
+  # early_termination: BanditPolicy(slack_factor=0.15, evaluation_interval=1, delay_evaluation=10) # optional. Not supported with bayesian sampling
+  params:
+    - name: instance
+      values: choice('12_100_593','14_158_900','14_164_1113')
