@@ -1,0 +1,16 @@
+{
+    "exp": "nerf-dtu",
+    "dataset_name": "llff",
+    "root_dir": "/mnt/external/rs_dtu_4/DTU/scan1",
+    "save_ckpt_path": "/mnt/external/rs_dtu_4/DTU/scan1",
+    "white_back": 0,
+    "tqdm_rate": 0,
+    "N_importance": 128,
+    "img_wh": [400, 300],
+    "num_epochs": 20,
+    "batch_size": 4096,
+    "optimizer": "adam",
+    "lr": 5e-4,
+    "lr_scheduler": "cosine",
+    "exp_name": "dtu"
+}

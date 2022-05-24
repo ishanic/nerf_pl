@@ -129,6 +129,11 @@ def create_spheric_poses(radius, n_poses=120):
         spheric_poses: (n_poses, 3, 4) the poses in the circular path
     """
     def spheric_pose(theta, phi, radius):
+        # it controls where the virtual camera is placed. 
+        # this is the translation wrt poses center. 
+        # the second line controls the height offset 
+        # and the third line controls the distance offset
+        # https://github.com/kwea123/nerf_pl/issues/16
         trans_t = lambda t : np.array([
             [1,0,0,0],
             [0,1,0,-0.9*t],
@@ -193,11 +198,12 @@ class LLFFDataset(Dataset):
         else:            
             poses_bounds = np.load(os.path.join(self.root_dir, self.pose_dir,
                                             'poses_bounds.npy')) # (N_images, 17)
-        self.image_paths = sorted(glob.glob(os.path.join(self.root_dir, 'images/*')))
+        self.image_paths = sorted(glob.glob(os.path.join(self.root_dir, 'image*/*')))
                         # load full resolution image then resize
         
-        if os.path.exists(os.path.join(self.root_dir,'missing_idx.npy')):
-            missing_idx = np.load(os.path.join(self.root_dir,'missing_idx.npy'))
+        if os.path.exists(os.path.join(self.root_dir,self.pose_dir,'missing_idx.npy')):
+            missing_idx = np.load(os.path.join(self.root_dir,self.pose_dir,'missing_idx.npy'))
+
             self.image_paths = np.delete(self.image_paths, missing_idx, axis=0)
         if self.split in ['train', 'val']:
             assert len(poses_bounds) == len(self.image_paths), \
@@ -362,8 +368,9 @@ class LLFFDataset(Dataset):
 if __name__ == '__main__':
     # img_wh = (1440, 1920)
     # img_wh = (4032, 3024)
-    img_wh = (4512, 3008)
+    img_wh = (400, 300)
     # dataset = LLFFDataset('/home/ischakra/data/objectron-cup/example_0/', 'val',spheric_poses=True, img_wh=img_wh)
     # train loads all images, and all rays in a single tensor. 
-    dataset = LLFFDataset('/data/synthetic/nerf_real_360/veena_player/', 'train',spheric_poses=True, img_wh=img_wh)
+    dataset = LLFFDataset('/data/ischakra/synthetic/rs_dtu_4/DTU/scan8', pose_dir='colmap_poses',spheric_poses=True, img_wh=img_wh)
     dataset.read_meta()
+    
