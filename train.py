@@ -1,6 +1,7 @@
 import os, sys
 from opt import get_opts
 import torch
+torch.manual_seed(0)
 from collections import defaultdict
 
 from torch.utils.data import DataLoader
@@ -22,12 +23,16 @@ from metrics import *
 # pytorch-lightning
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning import LightningModule, Trainer
-from pytorch_lightning.logging import TestTubeLogger
+from pytorch_lightning import loggers as pl_loggers
+# from pytorch_lightning.logging import TestTubeLogger
+import pdb
 
 class NeRFSystem(LightningModule):
     def __init__(self, hparams):
         super(NeRFSystem, self).__init__()
         self.hparams = hparams
+        # pdb.set_trace()
+        # self.hparams.update(vars(hparams))
 
         self.loss = loss_dict[hparams.loss_type]()
 
@@ -77,6 +82,7 @@ class NeRFSystem(LightningModule):
         if self.hparams.dataset_name == 'llff':
             kwargs['spheric_poses'] = self.hparams.spheric_poses
             kwargs['val_num'] = self.hparams.num_gpus
+            kwargs['crop'] = self.hparams.crop_images
         self.train_dataset = dataset(split='train', **kwargs)
         self.val_dataset = dataset(split='val', **kwargs)
 
@@ -89,14 +95,14 @@ class NeRFSystem(LightningModule):
     def train_dataloader(self):
         return DataLoader(self.train_dataset,
                           shuffle=True,
-                          num_workers=4,
+                          num_workers=self.hparams.num_workers,
                           batch_size=self.hparams.batch_size,
                           pin_memory=True)
 
     def val_dataloader(self):
         return DataLoader(self.val_dataset,
                           shuffle=False,
-                          num_workers=4,
+                          num_workers=self.hparams.num_workers,
                           batch_size=1, # validate one image (H*W rays) at a time
                           pin_memory=True)
     
@@ -159,12 +165,13 @@ if __name__ == '__main__':
                                           mode='min',
                                           save_top_k=5,)
 
-    logger = TestTubeLogger(
-        save_dir="logs",
-        name=hparams.exp_name,
-        debug=False,
-        create_git_tag=False
-    )
+    # logger = TestTubeLogger(
+    #     save_dir="logs",
+    #     name=hparams.exp_name,
+    #     debug=False,
+    #     create_git_tag=False
+    # )
+    logger = pl_loggers.TensorBoardLogger(f'{hparams.tb_path}', name=hparams.exp_name)
 
     trainer = Trainer(max_epochs=hparams.num_epochs,
                       checkpoint_callback=checkpoint_callback,
@@ -178,5 +185,5 @@ if __name__ == '__main__':
                       num_sanity_val_steps=1,
                       benchmark=True,
                       profiler=hparams.num_gpus==1)
-
+    # trainer.predict(system)
     trainer.fit(system)

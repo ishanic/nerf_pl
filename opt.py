@@ -16,7 +16,7 @@ def get_opts():
                         help='which dataset to train/val')
     parser.add_argument('--img_wh', nargs="+", type=int, default=[800, 800],
                         help='resolution (img_w, img_h) of the image')
-    parser.add_argument('--crop_images', nargs="+", type=bool, default=False,
+    parser.add_argument('--crop_images', default=False, action="store_true",
                         help='using boxes_xyxy.npy file to find crop boundaries')
     parser.add_argument('--spheric_poses', default=True, action="store_true",
                         help='whether images are taken in spheric poses (for llff)')
@@ -44,6 +44,8 @@ def get_opts():
                         help='chunk size to split the input to avoid OOM')
     parser.add_argument('--num_epochs', type=int, default=16,
                         help='number of training epochs')
+    parser.add_argument('--num_workers', type=int, default=4,
+                        help='number of training workers')
     parser.add_argument('--num_gpus', type=int, default=1,
                         help='number of gpus')
 
@@ -51,6 +53,8 @@ def get_opts():
                         help='pretrained checkpoint path to load')
     parser.add_argument('--save_ckpt_path', type=str, default=None,
                         help='checkpoint path to save to')
+    parser.add_argument('--tb_path', type=str, default=None,
+                        help='save all tensorboard metadata')
     parser.add_argument('--prefixes_to_ignore', nargs='+', type=str, default=['loss'],
                         help='the prefixes to ignore in the checkpoint state dict')
 

@@ -1,4 +1,5 @@
 import torch
+torch.manual_seed(0)
 from torchsearchsorted import searchsorted
 
 __all__ = ['render_rays']
@@ -87,7 +88,6 @@ def render_rays(models,
     Outputs:
         result: dictionary containing final rgb and depth maps for coarse and fine models
     """
-
     def inference(model, embedding_xyz, xyz_, dir_, dir_embedded, z_vals, weights_only=False):
         """
         Helper function that performs model inference.
@@ -112,6 +112,7 @@ def render_rays(models,
                 depth_final: (N_rays) depth map
                 weights: (N_rays, N_samples_): weights of each sample
         """
+        # import pdb; pdb.set_trace()
         N_samples_ = xyz_.shape[1]
         # Embed directions
         xyz_ = xyz_.view(-1, 3) # (N_rays*N_samples_, 3)

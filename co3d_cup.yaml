@@ -84,7 +84,7 @@ search:
       --root_dir /mnt/external/cup/{instance}
       --save_ckpt_path /mnt/external/cup/{instance}
       --exp_name {instance}
-      --crop_images True
+      --crop_images
   max_trials: 16
   parallel_trials: 16
   max_duration_hours: 72 # optional, duration in hours of the hyperdrive experiment. Defaults to 336 (ie 2 weeks). Max of 1440 (ie 60 days)

@@ -206,6 +206,7 @@ class LLFFDataset(Dataset):
         if self.crop == True:
             # pdb.set_trace()
             boxes_xyxy = np.load(os.path.join(self.root_dir, 'boxes_xyxy.npy')) # (N_images, 6)=> x_min,ymin,x_max,y_max,W,H
+            boxes_xyxy = np.delete(boxes_xyxy, missing_idx, axis=0)
             assert len(boxes_xyxy) == len(self.image_paths), \
                     'Mismatch between number of images and number of boxes!'
 
@@ -228,6 +229,7 @@ class LLFFDataset(Dataset):
 
         self.principal_point_px[:,0] *= scale_x
         self.principal_point_px[:,1] *= scale_y
+        # pdb.set_trace()
         self.focal_x = self.focal * scale_x
         self.focal_y = self.focal * scale_y
         if np.ndim(scale_x) == 0:
@@ -273,14 +275,14 @@ class LLFFDataset(Dataset):
         #     get_ray_directions(self.img_wh[1], self.img_wh[0], self.focal, principal_point=self.principal_point_px) # (H, W, 3)
         # W_index = W_index.reshape(-1)
         # H_index = H_index.reshape(-1)
-        if self.split == 'train': # create buffer of all rays and rgb data
+        if self.split != 'test': # create buffer of all rays and rgb data
                                   # use first N_images-1 to train, the LAST is val
             
             self.all_rays = []
             self.all_rgbs = []
             for i, image_path in enumerate(self.image_paths):
-                if i == val_idx: # exclude the val image
-                    continue
+                # if i == val_idx: # exclude the val image
+                #     continue
                 c2w = torch.FloatTensor(self.poses[i])
 
                 img = Image.open(image_path).convert('RGB')
@@ -303,11 +305,10 @@ class LLFFDataset(Dataset):
                 directions, W_index, H_index = \
                     get_ray_directions(self.img_wh[1], self.img_wh[0], self.focal[i,:], principal_point=self.principal_point_px[i,:]) # (H, W, 3)
                     # get_ray_directions(self.img_wh[1], self.img_wh[0], self.focal, principal_point=self.principal_point_px[i,:]) # (H, W, 3)
-                    
-                    
+                                        
                 W_index = W_index.reshape(-1)
                 H_index = H_index.reshape(-1)
-                # pdb.set_trace()
+                pdb.set_trace()
                 rays_o, rays_d = get_rays(directions, c2w) # both (hxwx3, 3x4)
                 
                 if not self.spheric_poses:
@@ -332,66 +333,70 @@ class LLFFDataset(Dataset):
                 #                              near*torch.ones_like(rays_o[:, :1]),
                 #                              far*torch.ones_like(rays_o[:, :1])],
                 #                              1)] # (h*w, 9)
-                                 
+            self.rays_val = self.all_rays[val_idx]
+            self.rgbs_val = self.all_rgbs[val_idx]
+            del self.all_rays[val_idx]
+            del self.all_rgbs[val_idx]
             self.all_rays = torch.cat(self.all_rays, 0) # ((N_images-1)*h*w, 8)
             self.all_rgbs = torch.cat(self.all_rgbs, 0) # ((N_images-1)*h*w, 3)
 
-            vis=False
-            if vis == True:
-                tgt_image_id = 0
-                # pdb.set_trace()
-                tgt_rays = self.all_rays[(self.all_rays[:, 0] == tgt_image_id).nonzero().squeeze(1)]
-                selected_id = random.randint(int(tgt_rays.size(0)/4),int(3*tgt_rays.size(0)/4))
-                # selected_id = 1101144 
-                # selected_id = 63128
+            # vis=False
+            # if vis == True:
+            #     tgt_image_id = 0
+            #     # pdb.set_trace()
+            #     tgt_rays = self.all_rays[(self.all_rays[:, 0] == tgt_image_id).nonzero().squeeze(1)]
+            #     selected_id = random.randint(int(tgt_rays.size(0)/4),int(3*tgt_rays.size(0)/4))
+            #     # selected_id = 1101144 
+            #     # selected_id = 63128
                 
-                # selected_id = 889524
-                # selected_id = 29788
-                # selected_id = 44047
-                print(self.img_wh, W, H, selected_id, W_index[selected_id], H_index[selected_id])
+            #     # selected_id = 889524
+            #     # selected_id = 29788
+            #     # selected_id = 44047
+            #     print(self.img_wh, W, H, selected_id, W_index[selected_id], H_index[selected_id])
                 
-                tgt_image = Image.open(self.image_paths[tgt_image_id])
+            #     tgt_image = Image.open(self.image_paths[tgt_image_id])
 
-                if self.crop == True:
-                    xmin, ymin, xmax, ymax, _, _ = boxes_xyxy[tgt_image_id,:]
-                    tgt_image = tgt_image.crop((xmin, ymin, xmax, ymax))
+            #     if self.crop == True:
+            #         xmin, ymin, xmax, ymax, _, _ = boxes_xyxy[tgt_image_id,:]
+            #         tgt_image = tgt_image.crop((xmin, ymin, xmax, ymax))
                     
-                tgt_image = np.array(tgt_image.resize(self.img_wh, Image.LANCZOS))                
-                # try:
-                #     cv2.circle(tgt_image, tuple(np.array([W_index[selected_id], H_index[selected_id]])), 10, (255,0,255), 2)
-                # except:
-                #     pdb.set_trace()                    
-                tgt_rays = tgt_rays[selected_id,:].unsqueeze(0)
+            #     tgt_image = np.array(tgt_image.resize(self.img_wh, Image.LANCZOS))                
+            #     # try:
+            #     #     cv2.circle(tgt_image, tuple(np.array([W_index[selected_id], H_index[selected_id]])), 10, (255,0,255), 2)
+            #     # except:
+            #     #     pdb.set_trace()                    
+            #     tgt_rays = tgt_rays[selected_id,:].unsqueeze(0)
                 
-                src_image_id = 1
-                # if src and tgt are same, tgt_rays[...,1:4] == poses[src_image][:,3]
+            #     src_image_id = 1
+            #     # if src and tgt are same, tgt_rays[...,1:4] == poses[src_image][:,3]
                 
-                coords_1, coords_2 = project_rays(tgt_rays[...,1:4], tgt_rays[...,4:7], torch.FloatTensor(self.poses[src_image_id]), self.focal[src_image_id,:], self.img_wh[1], self.img_wh[0], self.principal_point_px[src_image_id,:])
-                # coords_1, coords_2 = project_rays(tgt_rays[...,1:4], tgt_rays[...,4:7], torch.FloatTensor(self.poses[src_image_id]), self.focal, self.img_wh[1], self.img_wh[0], self.principal_point_px[src_image_id,:])
+            #     coords_1, coords_2 = project_rays(tgt_rays[...,1:4], tgt_rays[...,4:7], torch.FloatTensor(self.poses[src_image_id]), self.focal[src_image_id,:], self.img_wh[1], self.img_wh[0], self.principal_point_px[src_image_id,:])
+            #     # coords_1, coords_2 = project_rays(tgt_rays[...,1:4], tgt_rays[...,4:7], torch.FloatTensor(self.poses[src_image_id]), self.focal, self.img_wh[1], self.img_wh[0], self.principal_point_px[src_image_id,:])
 
-                src_image = Image.open(self.image_paths[src_image_id])
+            #     src_image = Image.open(self.image_paths[src_image_id])
 
-                if self.crop == True:
-                    xmin, ymin, xmax, ymax, _, _ = boxes_xyxy[src_image_id,:]
-                    src_image = src_image.crop((xmin, ymin, xmax, ymax))
+            #     if self.crop == True:
+            #         xmin, ymin, xmax, ymax, _, _ = boxes_xyxy[src_image_id,:]
+            #         src_image = src_image.crop((xmin, ymin, xmax, ymax))
                     
-                src_image = np.array(src_image.resize(self.img_wh, Image.LANCZOS))
+            #     src_image = np.array(src_image.resize(self.img_wh, Image.LANCZOS))
 
-                # for coord in coords_1:
-                #     cv2.circle(src_image, tuple(np.array(coord)), 2, (255,0,0), 2)
-                # for coord in coords_2:
-                #     cv2.circle(src_image, tuple(np.array(coord)), 2, (0,0,255), 2)
+            #     # for coord in coords_1:
+            #     #     cv2.circle(src_image, tuple(np.array(coord)), 2, (255,0,0), 2)
+            #     # for coord in coords_2:
+            #     #     cv2.circle(src_image, tuple(np.array(coord)), 2, (0,0,255), 2)
 
-                # cv2.imwrite("tgt_image.jpg", tgt_image)
-                # cv2.imwrite("src_image.jpg", src_image)
-                # pdb.set_trace()
+            #     # cv2.imwrite("tgt_image.jpg", tgt_image)
+            #     # cv2.imwrite("src_image.jpg", src_image)
+            #     # pdb.set_trace()
 
             
         elif self.split == 'val':
             print('val image is', self.image_paths[val_idx])
             self.c2w_val = self.poses[val_idx]
             self.image_path_val = self.image_paths[val_idx]
-
+            self.boxes_xyxy_val = self.boxes_xyxy[val_idx]
+            self.focal_val = self.focal[val_idx]
 
         else: # for testing, create a parametric rendering path
             
@@ -428,40 +433,52 @@ class LLFFDataset(Dataset):
                       'rgbs': self.all_rgbs[idx]}
 
         else:
-            if self.split == 'val':
-                c2w = torch.FloatTensor(self.c2w_val)
-            else:
-                # pdb.set_trace()
-                c2w = torch.FloatTensor(self.poses_test[idx])
-            directions, W_index, H_index = \
-                    get_ray_directions(self.img_wh[1], self.img_wh[0], np.array([self.focal_test, self.focal_test]), principal_point=np.array([self.img_wh[0]/2, self.img_wh[1]/2])) # (H, W, 3)
+            # if self.split == 'val':
+            #     c2w = torch.FloatTensor(self.c2w_val)
+            # else:
+            #     # pdb.set_trace()
+            #     c2w = torch.FloatTensor(self.poses_test[idx])
+            # # pdb.set_trace()                
+            # principal_point = np.zeros((2))
+            # principal_point_px = -1.0 * (principal_point - 1.0) * self.boxes_xyxy_val[4::]/2
+            # principal_point_px -= self.boxes_xyxy_val[:2]
+                
+            # # directions, W_index, H_index = \
+            # #         get_ray_directions(self.img_wh[1], self.img_wh[0], np.array([self.focal_test, self.focal_test]), principal_point=np.array([self.img_wh[0]/2, self.img_wh[1]/2])) # (H, W, 3)
             # directions, W_index, H_index = \
-                    # get_ray_directions(self.img_wh[1], self.img_wh[0], self.focal[idx,:], principal_point=self.principal_point_px[idx,:]) # (H, W, 3)
+            #         get_ray_directions(self.img_wh[1], self.img_wh[0], self.focal_val, principal_point=principal_point_px) # (H, W, 3)
 
-            rays_o, rays_d = get_rays(directions, c2w)
-            if not self.spheric_poses:
-                near, far = 0, 1
-                rays_o, rays_d = get_ndc_rays(self.img_wh[1], self.img_wh[0],
-                                              self.focal, 1.0, rays_o, rays_d)
-            else:
-                near = self.bounds.min()
-                # far = min(8 * near, self.bounds.max())
-                far = self.bounds.max()
+            # rays_o, rays_d = get_rays(directions, c2w)
+            # if not self.spheric_poses:
+            #     near, far = 0, 1
+            #     rays_o, rays_d = get_ndc_rays(self.img_wh[1], self.img_wh[0],
+            #                                   self.focal, 1.0, rays_o, rays_d)
+            # else:
+            #     near = self.bounds.min()
+            #     # far = min(8 * near, self.bounds.max())
+            #     far = self.bounds.max()
 
-            rays = torch.cat([rays_o, rays_d, 
-                              near*torch.ones_like(rays_o[:, :1]),
-                              far*torch.ones_like(rays_o[:, :1])],
-                              1) # (h*w, 8)
+            # rays = torch.cat([rays_o, rays_d, 
+            #                   near*torch.ones_like(rays_o[:, :1]),
+            #                   far*torch.ones_like(rays_o[:, :1])],
+            #                   1) # (h*w, 8)
             
-            sample = {'rays': rays,
-                      'c2w': c2w}
+            # sample = {'rays': rays,
+            #           'c2w': c2w}
             
-            if self.split == 'val':
-                img = Image.open(self.image_path_val).convert('RGB')
-                img = img.resize(self.img_wh, Image.LANCZOS)
-                img = self.transform(img) # (3, h, w)
-                img = img.view(3, -1).permute(1, 0) # (h*w, 3)
-                sample['rgbs'] = img
+            # if self.split == 'val':
+            #     img = Image.open(self.image_path_val).convert('RGB')
+            #     if self.crop == True:
+            #         xmin, ymin, xmax, ymax, _, _ = self.boxes_xyxy_val
+            #         # pdb.set_trace()
+            #         img = img.crop((xmin, ymin, xmax, ymax))
+
+            #     img = img.resize(self.img_wh, Image.LANCZOS)
+            #     img = self.transform(img) # (3, h, w)
+            #     img = img.view(3, -1).permute(1, 0) # (h*w, 3)
+            #     sample['rgbs'] = img
+            sample = {'rays': self.rays_val,
+                      'rgbs': self.rgbs_val}
 
         return sample
 

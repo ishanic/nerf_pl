@@ -59,7 +59,7 @@ def get_rays(directions, c2w):
 
     rays_d = rays_d.view(-1, 3)
     rays_o = rays_o.view(-1, 3)
-
+    pdb.set_trace()
     return rays_o, rays_d
 
 def project_rays(rays_o, rays_d, c2w_src, focal, H, W, principal_point):
