@@ -7,14 +7,14 @@
     "N_importance": 128,
     "xyz_encoding_dim": 10,
     "dir_encoding_dim": 4,
-    "img_wh": [760,428],
+    "img_wh": [504,378],
     "num_epochs": 5,
     "batch_size": 4096,
     "optimizer": "adam",
     "lr": 5e-4,
     "lr_scheduler": "cosine",
     "exp_name": "chair",
-    "pose": "HeT",
+    "pose": "colmap",
     "pose_type": "extrinsics", 
-    "percent_of_error": 10
+    "percent_of_error": 0
 }

@@ -167,14 +167,14 @@ if __name__ == "__main__":
     #          PlyElement.describe(face, 'face')]).write(f'{args.scene_name}.ply')
     # pdb.set_trace()
     # remove noise in the mesh by keeping only the biggest cluster
-    # print('Removing noise ...')
+    print('Removing noise ...')
     mesh = o3d.io.read_triangle_mesh(f"{args.scene_name}.ply")
     # idxs, count, _ = mesh.cluster_connected_triangles()
     # max_cluster_idx = np.argmax(count)
     # triangles_to_remove = [i for i in range(len(face)) if idxs[i] != max_cluster_idx]
     # mesh.remove_triangles_by_index(triangles_to_remove)
     # mesh.remove_unreferenced_vertices()
-    # print(f'Mesh has {len(mesh.vertices)/1e6:.2f} M vertices and {len(mesh.triangles)/1e6:.2f} M faces.')
+    print(f'Mesh has {len(mesh.vertices)/1e6:.2f} M vertices and {len(mesh.triangles)/1e6:.2f} M faces.')
 
     vertices_ = np.asarray(mesh.vertices).astype(np.float32)
     triangles = np.asarray(mesh.triangles)
@@ -299,6 +299,7 @@ if __name__ == "__main__":
     face = np.empty(len(triangles), dtype=[('vertex_indices', 'i4', (3,))])
     face['vertex_indices'] = triangles
 
+    mcubes.export_obj(vertex_all, triangles, 'sphere.obj')
     PlyData([PlyElement.describe(vertex_all, 'vertex'), 
              PlyElement.describe(face, 'face')]).write(f'{args.scene_name}_colored.ply')
 

@@ -1,16 +1,20 @@
 {
     "exp": "nerf-real-360",
     "dataset_name": "llff",
-    "root_dir": "/data/ischakra/synthetic/officechair/",
+    "root_dir": "/data/ischakra/synthetic/silica-reproduce/",
     "save_ckpt_path": "/home/ischakra/src/code/nerf_pl/ckpts/",
     "N_importance": 64,
     "xyz_encoding_dim": 10,
     "dir_encoding_dim": 4,
-    "img_wh": [3024, 4032],
-    "num_epochs": 20,
+    "img_wh": [1008,756],
+    "num_epochs": 30,
     "batch_size": 4096,
     "optimizer": "adam",
     "lr": 5e-4,
     "lr_scheduler": "cosine",
-    "exp_name": "bsx4"
+    "exp_name": "silica-reproduce",
+    "pose": "colmap",
+    "pose_type": "extrinsics", 
+    "percent_of_error": 0
+
 }

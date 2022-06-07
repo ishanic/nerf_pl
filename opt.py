@@ -28,7 +28,7 @@ def get_opts():
     parser.add_argument('--white_back', default=False, action="store_true",
                         help='whether images are taken with white background')
 
-    parser.add_argument('--N_samples', type=int, default=64, #from jaxnerf else 128
+    parser.add_argument('--N_samples', type=int, default=128, #from jaxnerf else 128
                         help='number of coarse samples')
     parser.add_argument('--N_importance', type=int, default=128,
                         help='number of additional fine samples')

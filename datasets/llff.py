@@ -140,6 +140,13 @@ def create_spheric_poses(radius, n_poses=120):
             [0,0,1,t],
             [0,0,0,1],
         ])
+        # pdb.set_trace()
+        # trans_t = lambda t : np.array([
+        #             [1,0,0,0],
+        #             [0,1,0,-1.26*t],
+        #             [0,0,1,1.10*t],
+        #             [0,0,0,1],
+        #         ])
 
         rot_phi = lambda phi : np.array([
             [1,0,0,0],
@@ -156,12 +163,23 @@ def create_spheric_poses(radius, n_poses=120):
         ])
 
         c2w = rot_theta(theta) @ rot_phi(phi) @ trans_t(radius)
+        # pdb.set_trace()
+        #negate first row. flip rows 2 and 3
         c2w = np.array([[-1,0,0,0],[0,0,1,0],[0,1,0,0],[0,0,0,1]]) @ c2w
+        
+        # c2w[0,-1] = -0.34344885; c2w[1,-1] = -1.85839597; c2w[2,-1] = 0.10080478
+        # c2w = np.array([[ 0.99386902,  0.06911561, -0.08629836, -0.34344885],
+        #                 [-0.11006334,  0.69266068, -0.71281642, -1.85839597],
+        #                 [ 0.01050874,  0.71794444,  0.69602109,  0.10080478]])
+
         return c2w[:3]
 
     spheric_poses = []
+    # for th in np.linspace(0, 2*np.pi, n_poses+1)[:-1]:
+    #     spheric_poses += [spheric_pose(th, -np.pi/5, radius)] # 36 degree view downwards
     for th in np.linspace(0, 2*np.pi, n_poses+1)[:-1]:
-        spheric_poses += [spheric_pose(th, -np.pi/5, radius)] # 36 degree view downwards
+        spheric_poses += [spheric_pose(th, np.pi/6, radius)] # 36 degree view downwards
+
     return np.stack(spheric_poses, 0)
 
 
@@ -205,6 +223,8 @@ class LLFFDataset(Dataset):
             missing_idx = np.load(os.path.join(self.root_dir,self.pose_dir,'missing_idx.npy'))
 
             self.image_paths = np.delete(self.image_paths, missing_idx, axis=0)
+            print('found missing_idx file')
+            print(len(poses_bounds), len(self.image_paths))
         if self.split in ['train', 'val']:
             assert len(poses_bounds) == len(self.image_paths), \
                 'Mismatch between number of images and number of poses! Please rerun COLMAP!'
@@ -214,6 +234,7 @@ class LLFFDataset(Dataset):
         self.bounds = poses_bounds[:, -2:] # (N_images, 2)
         # Step 1: rescale focal length according to training resolution
         H, W, self.focal = poses[0, :, -1] # original intrinsics, same for all images
+        # pdb.set_trace()
         assert H*self.img_wh[0] == W*self.img_wh[1], \
             f'You must set @img_wh to have the same aspect ratio as ({W}, {H}) !'
         
@@ -306,6 +327,7 @@ class LLFFDataset(Dataset):
         else: # for testing, create a parametric rendering path
             if self.split.endswith('train'): # test on training set
                 self.poses_test = self.poses
+                # pdb.set_trace()
             elif not self.spheric_poses:
                 focus_depth = 3.5 # hardcoded, this is numerically close to the formula
                                   # given in the original repo. Mathematically if near=1
@@ -316,6 +338,7 @@ class LLFFDataset(Dataset):
                 # self.radius_scale = 1.1
                 radius = self.radius_scale * self.bounds.min()
                 self.poses_test = create_spheric_poses(radius)
+                # pdb.set_trace()
 
     def define_transforms(self):
         self.transform = T.ToTensor()
@@ -367,10 +390,11 @@ class LLFFDataset(Dataset):
 
 if __name__ == '__main__':
     # img_wh = (1440, 1920)
-    # img_wh = (4032, 3024)
-    img_wh = (400, 300)
+    img_wh = (4032, 3024)
+    # img_wh = (400, 300)
     # dataset = LLFFDataset('/home/ischakra/data/objectron-cup/example_0/', 'val',spheric_poses=True, img_wh=img_wh)
     # train loads all images, and all rays in a single tensor. 
-    dataset = LLFFDataset('/data/ischakra/synthetic/rs_dtu_4/DTU/scan8', pose_dir='colmap_poses',spheric_poses=True, img_wh=img_wh)
+    # dataset = LLFFDataset('/data/ischakra/synthetic/rs_dtu_4/DTU/scan8', pose_dir='colmap_poses',spheric_poses=True, img_wh=img_wh)
+    dataset = LLFFDataset('/data/ischakra/synthetic/stag', pose_dir='colmap_poses',spheric_poses=True, img_wh=img_wh)
     dataset.read_meta()
     
