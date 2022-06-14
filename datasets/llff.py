@@ -1,4 +1,5 @@
 import torch
+import torchvision
 from torch.utils.data import Dataset
 import glob
 import numpy as np
@@ -132,6 +133,13 @@ def create_spheric_poses(radius, n_poses=120):
             [0,0,0,1],
         ])
 
+        # trans_t = lambda t : np.array([
+        #     [1,0,0,0],
+        #     [0,1,0,-0.9*t],
+        #     [0,0,1,t],
+        #     [0,0,0,1],
+        # ])
+
         rot_phi = lambda phi : np.array([
             [1,0,0,0],
             [0,np.cos(phi),-np.sin(phi),0],
@@ -153,6 +161,7 @@ def create_spheric_poses(radius, n_poses=120):
     spheric_poses = []
     for th in np.linspace(0, 2*np.pi, n_poses+1)[:-1]:
         spheric_poses += [spheric_pose(th, -np.pi/5, radius)] # 36 degree view downwards
+        # spheric_poses += [spheric_pose(th, 0, radius)] # 36 degree view downwards
     return np.stack(spheric_poses, 0)
 
 
@@ -172,11 +181,17 @@ class LLFFDataset(Dataset):
         self.white_back = False
 
     def read_meta(self):
-        poses_bounds = np.load(os.path.join(self.root_dir,
+        poses_bounds = np.load(os.path.join(self.root_dir, 'colmap_poses',
                                             'poses_bounds.npy')) # (N_images, 17)
+        # poses_bounds = np.load(os.path.join(self.root_dir,
+        #                                     'poses_bounds.npy')) # (N_images, 17)
+
+        self.image_paths = sorted(glob.glob(os.path.join(self.root_dir, 'images/*')))
+                    # load full resolution image then resize
+        if os.path.exists(os.path.join(self.root_dir,'colmap_poses','missing_idx.npy')):
+            missing_idx = np.load(os.path.join(self.root_dir,'colmap_poses','missing_idx.npy'))
+            self.image_paths = np.delete(self.image_paths, missing_idx, axis=0)
         if self.split in ['train', 'val']:
-            self.image_paths = sorted(glob.glob(os.path.join(self.root_dir, 'images/*')))
-                        # load full resolution image then resize
             assert len(poses_bounds) == len(self.image_paths), \
                 'Mismatch between number of images and number of poses! Please rerun COLMAP!'
 
@@ -224,6 +239,7 @@ class LLFFDataset(Dataset):
                 img = Image.open(image_path)
                 img = img.resize(self.img_wh, Image.LANCZOS)
                 img = self.transform(img) # (3, h, w)
+                # img = torchvision.transforms.functional.adjust_contrast(img, 2)
                 img = img.view(3, -1).permute(1, 0) # (h*w, 3) RGB
                 self.all_rgbs += [img]
                 
@@ -254,7 +270,12 @@ class LLFFDataset(Dataset):
 
         else: # for testing, create a parametric rendering path
             if self.split.endswith('train'): # test on training set
-                self.poses_test = self.poses
+                # self.poses_test = self.poses
+                poses = self.poses.copy()
+                perror = 0.1
+                poses[:,:,:4] = poses[:,:,:4]+np.random.uniform(low=-poses[:,:,:4]*perror, high=poses[:,:,:4]*perror)
+                self.poses_test = poses
+                # import pdb; pdb.set_trace()
             elif not self.spheric_poses:
                 focus_depth = 3.5 # hardcoded, this is numerically close to the formula
                                   # given in the original repo. Mathematically if near=1
@@ -267,6 +288,7 @@ class LLFFDataset(Dataset):
 
     def define_transforms(self):
         self.transform = T.ToTensor()
+        # self.transform = torch.nn.Sequential(T.adjust_contrast(2), T.ToTensor())
 
     def __len__(self):
         if self.split == 'train':

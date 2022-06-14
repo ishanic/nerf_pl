@@ -18,6 +18,36 @@ from datasets import dataset_dict
 
 torch.backends.cudnn.benchmark = True
 
+gamma = 0.4
+lookUpTable = np.empty((1,256), np.uint8)
+for i in range(256):
+    lookUpTable[0,i] = np.clip(pow(i / 255.0, gamma) * 255.0, 0, 255)
+
+def increase_contrast(image):
+    res = cv2.LUT(image, lookUpTable)
+    return res
+
+def sharpen(image):
+    kernel3 = np.array([[0, -1,  0],
+                   [-1,  5, -1],
+                    [0, -1,  0]])
+    return cv2.filter2D(src=image, ddepth=-1, kernel=kernel3)
+
+
+# def increase_contrast(image, gain, bias):
+#     # gain*pixel+bias
+#     alpha = gain
+#     beta = bias
+#     # Initialize values
+#     # alpha = float(input('* Enter the alpha value [1.0-3.0]: '))
+#     # beta = int(input('* Enter the beta value [0-100]: '))
+#     new_image = np.zeros(image.shape, image.dtype)
+#     for y in range(image.shape[0]):
+#         for x in range(image.shape[1]):
+#             for c in range(image.shape[2]):
+#                 new_image[y,x,c] = np.clip(alpha*image[y,x,c] + beta, 0, 255)
+#     return new_image
+
 def get_opts():
     parser = ArgumentParser()
     parser.add_argument('--root_dir', type=str,
@@ -106,7 +136,7 @@ if __name__ == "__main__":
     xmin, xmax = args.x_range
     ymin, ymax = args.y_range
     zmin, zmax = args.z_range
-    assert xmax-xmin == ymax-ymin == zmax-zmin, 'the ranges must have the same length!'
+    # assert xmax-xmin == ymax-ymin == zmax-zmin, 'the ranges must have the same length!'
     x = np.linspace(xmin, xmax, N)
     y = np.linspace(ymin, ymax, N)
     z = np.linspace(zmin, zmax, N)
@@ -132,6 +162,7 @@ if __name__ == "__main__":
 
     # perform marching cube algorithm to retrieve vertices and triangle mesh
     print('Extracting mesh ...')
+    # import pdb; pdb.set_trace()
     vertices, triangles = mcubes.marching_cubes(sigma, args.sigma_threshold)
 
     ##### Until mesh extraction here, it is the same as the original repo. ######
@@ -148,11 +179,11 @@ if __name__ == "__main__":
     # remove noise in the mesh by keeping only the biggest cluster
     print('Removing noise ...')
     mesh = o3d.io.read_triangle_mesh(f"{args.scene_name}.ply")
-    idxs, count, _ = mesh.cluster_connected_triangles()
-    max_cluster_idx = np.argmax(count)
-    triangles_to_remove = [i for i in range(len(face)) if idxs[i] != max_cluster_idx]
-    mesh.remove_triangles_by_index(triangles_to_remove)
-    mesh.remove_unreferenced_vertices()
+    # idxs, count, _ = mesh.cluster_connected_triangles()
+    # max_cluster_idx = np.argmax(count)
+    # triangles_to_remove = [i for i in range(len(face)) if idxs[i] != max_cluster_idx]
+    # mesh.remove_triangles_by_index(triangles_to_remove)
+    # mesh.remove_unreferenced_vertices()
     print(f'Mesh has {len(mesh.vertices)/1e6:.2f} M vertices and {len(mesh.triangles)/1e6:.2f} M faces.')
 
     vertices_ = np.asarray(mesh.vertices).astype(np.float32)
@@ -186,7 +217,11 @@ if __name__ == "__main__":
         ## read image of this pose
         image = cv2.imread(dataset.image_paths[idx])[:,:,::-1]
         image = cv2.resize(image, tuple(args.img_wh))
-
+        # cv2.imwrite('before.png',image)
+        image = increase_contrast(image)
+        image = sharpen(image)
+        # cv2.imwrite('after.png',image)
+        # import pdb; pdb.set_trace()
         ## read the camera to world relative pose
         P_c2w = np.concatenate([dataset.poses[idx], np.array([0, 0, 0, 1]).reshape(1, 4)], 0)
         P_w2c = np.linalg.inv(P_c2w)[:3] # (3, 4)
@@ -261,6 +296,6 @@ if __name__ == "__main__":
     face['vertex_indices'] = triangles
 
     PlyData([PlyElement.describe(vertex_all, 'vertex'), 
-             PlyElement.describe(face, 'face')]).write(f'{args.scene_name}.ply')
+             PlyElement.describe(face, 'face')]).write(f'{args.scene_name}_colored.ply')
 
     print('Done!')
