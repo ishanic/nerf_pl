@@ -181,16 +181,16 @@ class LLFFDataset(Dataset):
         self.white_back = False
 
     def read_meta(self):
-        poses_bounds = np.load(os.path.join(self.root_dir, 'colmap_poses',
-                                            'poses_bounds.npy')) # (N_images, 17)
-        # poses_bounds = np.load(os.path.join(self.root_dir,
+        # poses_bounds = np.load(os.path.join(self.root_dir, 'colmap_poses',
         #                                     'poses_bounds.npy')) # (N_images, 17)
+        poses_bounds = np.load(os.path.join(self.root_dir,
+                                            'poses_bounds.npy')) # (N_images, 17)
 
         self.image_paths = sorted(glob.glob(os.path.join(self.root_dir, 'images/*')))
                     # load full resolution image then resize
-        if os.path.exists(os.path.join(self.root_dir,'colmap_poses','missing_idx.npy')):
-            missing_idx = np.load(os.path.join(self.root_dir,'colmap_poses','missing_idx.npy'))
-            self.image_paths = np.delete(self.image_paths, missing_idx, axis=0)
+        # if os.path.exists(os.path.join(self.root_dir,'colmap_poses','missing_idx.npy')):
+        #     missing_idx = np.load(os.path.join(self.root_dir,'colmap_poses','missing_idx.npy'))
+        #     self.image_paths = np.delete(self.image_paths, missing_idx, axis=0)
         if self.split in ['train', 'val']:
             assert len(poses_bounds) == len(self.image_paths), \
                 'Mismatch between number of images and number of poses! Please rerun COLMAP!'
